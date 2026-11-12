@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kiki-ai-agent"
+version = "0.1.0"
+description = "Assistente pessoal local com memória SQLite e Ollama"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+kiki = "kiki.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["kiki*"]
+
+[tool.setuptools.package-data]
+kiki = ["assets/fonts/*.ttf", "assets/fonts/LICENSE.txt"]
