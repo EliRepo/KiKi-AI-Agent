@@ -44,7 +44,7 @@ Ou abra `scripts/start.cmd`. Memória e lembretes não exigem bibliotecas Python
 py -3 -m unittest discover -s tests -v
 ```
 
-Os testes não baixam modelos nem enviam dados à rede. O adaptador Ollama usa resposta simulada nos testes. A validação integrada e o benchmark no computador de destino continuam pendentes. CI configurada para Windows/Linux e Python 3.11–3.13; resultados dependem da execução no GitHub.
+Os testes não baixam modelos nem enviam dados à rede. O adaptador Ollama usa resposta simulada nos testes. A validação integrada e o benchmark no computador de destino continuam pendentes. A [CI da primeira publicação](https://github.com/EliRepo/KiKi-AI-Agent/actions/runs/43322972528) passou em Windows/Linux e Python 3.11–3.13. Testes de interface são ignorados quando o ambiente não tem display; foram executados localmente no Windows.
 
 ## Estrutura
 

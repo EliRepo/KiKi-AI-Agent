@@ -1,5 +1,12 @@
 # Atualizações
 
+## Primeira publicação no GitHub
+
+- Base modular e refinamentos integrados à main pelo PR #1, com remoção do código C anterior.
+- CI aprovada em Windows/Linux com Python 3.11, 3.12 e 3.13; 16 testes locais aprovados, incluindo interface.
+- Autorização do conector limitada ao repositório KiKi-AI-Agent.
+- Ollama real e benchmark continuam pendentes; esta publicação não significa que a IA foi validada no equipamento de destino.
+
 ## Refinamento M09.4 — controles arredondados e fonte Inter
 
 - Temas renomeados para exatamente Claro e Escuro, preservando as paletas violeta e configurações existentes.

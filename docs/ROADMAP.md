@@ -17,7 +17,7 @@ Atualizado em 12/11/2026. Estados: **parcial**, **implementado no protótipo**, 
 | M09 | Interface e histórico | M09.1 avaliado pelo responsável; M09.4 implementado localmente: paletas violeta e preferências de leitura | Avaliar M09.4; M09.2, M09.3, M09.5 e revisão completa M09.6 seguem pendentes |
 | M10 | Proteção e recuperação | Parcial: backup testado, banco ignorado no Git | Ensaio de restauração, exclusão controlada e política de retenção |
 | M11 | Instalação e operação | Parcial: launcher e instruções | Instalador validado e atualização sem perda de dados |
-| M12 | Validação final | Parcial: testes locais e CI definida | CI executada, ensaio offline e aceite no computador real |
+| M12 | Validação final | Parcial: 16 testes locais; CI aprovada em Windows/Linux e Python 3.11–3.13 | Ensaio offline, Ollama real e aceite final no computador de destino |
 
 ## Marcos em ordem
 
@@ -27,7 +27,7 @@ Atualizado em 12/11/2026. Estados: **parcial**, **implementado no protótipo**, 
 - [x] Preservar o formato do banco do protótipo.
 - [x] Testar persistência, datas, backup e contrato da API com simulação.
 - [x] Definir CI para Windows/Linux e Python 3.11–3.13.
-- [ ] Executar CI no GitHub e conferir os resultados.
+- [x] CI executada e aprovada em Windows/Linux e Python 3.11–3.13: [execução validada](https://github.com/EliRepo/KiKi-AI-Agent/actions/runs/43322972528).
 - [ ] Instalar/abrir Ollama no computador de destino e baixar o modelo.
 - [ ] Medir tempo de resposta, memória e impacto nos programas habituais.
 - [ ] Validar sem internet após o download.
@@ -78,3 +78,7 @@ Saída: operação previsível durante uma jornada de trabalho e limites claros 
 Cada conclusão precisa indicar teste, execução real ou evidência de revisão. Não converter “API simulada passou” em “modelo validado”. Funcionalidades futuras permanecem identificadas como planejadas. Sem prazo estimado antes do ensaio real da fase 1.
 
 Cada implementação deve ser mostrada ao responsável antes de publicar no GitHub. Depois da avaliação e aprovação explícita, publicar a entrega e perguntar se pode avançar. Requisitos detalhados da interface: [M09](UI-REQUIREMENTS.md).
+
+## Publicação da base
+
+Base e refinamentos visuais publicados na main pelo [PR #1](https://github.com/EliRepo/KiKi-AI-Agent/pull/1), com autorização explícita do responsável. Próxima entrega depende de nova avaliação. Testes reais do modelo permanecem pendentes.
