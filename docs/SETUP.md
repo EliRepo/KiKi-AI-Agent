@@ -79,6 +79,18 @@ Banco: `%LOCALAPPDATA%\KiKi\kiki.sqlite3`. Compatível com o protótipo anterior
 
 Para restaurar, feche a KiKi. Preserve uma cópia do banco atual, copie o backup para essa pasta com o nome `kiki.sqlite3` e reabra. Não substitua o banco com a aplicação aberta. Não guarde dados reais no repositório.
 
+Antes de adotar um backup, use em Configuração **Restaurar cópia em novo arquivo…**. Escolha a origem e um nome que ainda não existe. A KiKi verifica integridade e estrutura, abre a origem só para leitura e cria uma cópia consistente. Não sobrescreve arquivos nem troca a memória em uso; o resultado aparece na barra de estado. Um destino já existente, arquivo corrompido, ausente ou de versão futura é recusado. Só depois da verificação, com a KiKi fechada, siga o procedimento acima para adotar o arquivo restaurado. A política de retenção continua manual.
+
+### Conferir fontes de uma resposta
+
+Depois da consulta, **Ver N registro(s) enviado(s) à IA** abre os trechos exatos entregues ao modelo, com IDs e datas. São no máximo oito registros de 500 caracteres, capturados no momento do envio; alterações posteriores na memória não mudam essa conferência. Quando a busca não encontra registros, a interface indica uma consulta sem registros.
+
+IDs citados nos formatos `[123]` ou `#123` que não estavam no contexto enviado geram aviso. Isso não verifica a verdade da resposta nem detecta todos os formatos de citação. Confira o texto da fonte mesmo quando não houver alerta.
+
+A busca ignora acentos e compara palavras inteiras, evitando Ana/Mariana. Não compreende sinônimos ou variações de palavras; tente termos que estejam no registro.
+
+Para explorar a interface sem dados pessoais, execute `.\.venv\Scripts\python.exe -m scripts.demo_workspace`. O título identifica a demonstração; banco em memória e configurações temporárias são descartados ao fechar. O chat usa Ollama real se estiver disponível; não há respostas simuladas nessa demonstração.
+
 ## Limites operacionais
 
 - Use uma instância por vez.

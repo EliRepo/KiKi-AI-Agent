@@ -85,6 +85,23 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(str(self.app.send.cget('state')), 'normal')
         self.assertEqual(self.memory.search(''), [])
 
+    def test_sources_keep_the_sent_snapshot_and_flag_unknown_citations(self):
+        identifier = self.memory.save('Ana: texto enviado originalmente')
+        self.app.question.insert(0, 'Ana')
+        with patch('kiki.ui.desktop.threading.Thread') as thread, \
+             patch('kiki.ui.desktop.ask_ollama', return_value='Resposta com origem inventada [999].'):
+            thread.return_value.start.side_effect = lambda: thread.call_args.kwargs['target']()
+            self.app.ask()
+            self.memory.update_note(identifier, 'Ana: texto corrigido depois do envio', expected_revision=1)
+            self.app.poll()
+        self.assertIn('IDs não enviados', self.app.answer.get('1.0', 'end'))
+        self.assertIn('citações não verificadas', self.app.status.get())
+        viewer = self.app.show_sources()
+        snapshot = viewer.text.get('1.0', 'end')
+        self.assertIn('texto enviado originalmente', snapshot)
+        self.assertNotIn('corrigido depois', snapshot)
+        viewer.destroy()
+
     def test_memory_and_reminder_actions_still_work(self):
         self.app.workspace.select('notes')
         self.app.note.insert('1.0', 'Ana: permissão corrigida')
@@ -110,6 +127,17 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.memory.get_note(identifier).text, 'Ana: corrigido')
         self.assertEqual(self.app.note.get('1.0', 'end').strip(), 'Novo registro ainda não salvo')
         self.assertEqual(self.app.record_query, 'Ana')
+
+    def test_memory_list_and_preview_fit_minimum_window(self):
+        self.root.deiconify()
+        self.root.geometry('960x680')
+        self.app.workspace.select('notes')
+        self.root.update()
+        for widget in (self.app.record_list, self.app.records):
+            self.assertTrue(widget.winfo_viewable())
+            self.assertGreater(widget.winfo_height(), 20)
+            self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(),
+                                 self.root.winfo_rooty() + self.root.winfo_height())
 
     def test_delete_requires_confirmation_and_keeps_changed_record(self):
         identifier = self.memory.save('Registro fictício')

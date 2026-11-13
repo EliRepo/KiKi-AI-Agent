@@ -6,6 +6,8 @@ Atualizado em 13/11/2026. Estados: **parcial**, **implementado no protótipo**, 
 
 M02 em avaliação local: Ollama 0.40.16 e qwen3:1.7b instalados; consultas reais no i5-1334U/16 GB, erro real de modelo ausente e falhas simuladas diferenciadas na interface. Ver [evidências e limites](VALIDACAO-OLLAMA-2026-11-13.md). Aceitação de qualidade, citações e teste sem internet seguem pendentes.
 
+M03, M04 e recuperação M10 avançados localmente; veja [implementação e demonstração](VALIDACAO-MEMORIA-2026-11-13.md). A próxima fase funcional é M05–M07. A qualidade do modelo e o ensaio offline continuam pendentes e não são dispensados por esses avanços.
+
 ## Submódulos
 
 | ID | Submódulo | Estado e evidência | Falta para concluir |
@@ -13,13 +15,13 @@ M02 em avaliação local: Ollama 0.40.16 e qwen3:1.7b instalados; consultas reai
 | M01 | Configuração e diagnóstico | Implementado: configuração persistente, diagnóstico real do serviço/modelo em 13/11 e detecção portátil | Avaliação do responsável durante o uso |
 | M02 | Motor de IA local | Parcial: inferência real, tempos e memória registrados; falhas diferenciadas, incluindo 404 real | Qualidade/citações, uso diário, teste sem internet e timeout real |
 | M03 | Memória persistente | Implementado localmente: edição, exclusão confirmada, esquema 2, backup pré-migração, rollback e conflitos testados | Avaliação visual e aceite no uso diário |
-| M04 | Busca de contexto | Parcial: busca sem acentos e contexto limitado | Conjunto de perguntas de aceitação, fontes visíveis e avaliação de relevância |
+| M04 | Busca de contexto | Implementado localmente: palavras inteiras, 12 perguntas de aceitação, trechos enviados visíveis e aviso de IDs ausentes | Avaliar perguntas novas e qualidade das respostas do modelo; sinônimos não são tratados |
 | M05 | Entendimento de pedidos | Parcial: datas explícitas com validação | Intenções, campos obrigatórios e perguntas sobre dados ausentes |
 | M06 | Coordenador do agente | Planejado | Estados do pedido, ferramentas permitidas e resultados verificáveis |
 | M07 | Ferramentas e confirmação | Parcial: ações pelos botões | Propostas tipadas, confirmação por ID e execução sem duplicidade |
 | M08 | Agenda e lembretes | Parcial: criação, aviso e conclusão | Editar, adiar, cancelar e decidir operação em segundo plano |
 | M09 | Interface e histórico | M09.1 avaliado pelo responsável; M09.4 implementado localmente: paletas violeta e preferências de leitura | Avaliar M09.4; M09.2, M09.3, M09.5 e revisão completa M09.6 seguem pendentes |
-| M10 | Proteção e recuperação | Parcial: backup testado, banco ignorado no Git | Ensaio de restauração, exclusão controlada e política de retenção |
+| M10 | Proteção e recuperação | Parcial: backup, recuperação em novo arquivo e recusa de cópias inválidas/sobrescrita testados; exclusão de registros confirmada | Troca operacional do banco com aplicativo fechado, política de retenção e ensaio manual completo |
 | M11 | Instalação e operação | Parcial: launcher e instruções | Instalador validado e atualização sem perda de dados |
 | M12 | Validação final | Parcial: 16 testes locais; CI aprovada em Windows/Linux e Python 3.11–3.13 | Ensaio offline, Ollama real e aceite final no computador de destino |
 
@@ -42,8 +44,8 @@ Saída: decidir se Qwen3 1.7B atende à qualidade e ao desempenho necessários. 
 
 - [x] Configuração persistente e diagnóstico (M01); serviço/modelo reais verificados em 13/11/2026.
 - [x] Edição/exclusão e migrações (M03): 33 testes locais aprovados nesta etapa, incluindo bancos v0/v1, rollback, backup, conflitos e interface.
-- [ ] Avaliação de busca com dados fictícios (M04).
-- [ ] Restauração de backup testada (M10).
+- [x] Avaliação de busca com dados fictícios (M04): 12 perguntas com IDs esperados, palavras inteiras e acentos; fontes enviadas visíveis na interface.
+- [x] Restauração de backup testada (M10): cópia validada em arquivo novo, sem sobrescrever origem ou banco atual; integridade, arquivo ausente/corrompido e versão futura testados. Substituição operacional do banco permanece manual.
 
 Saída: registros corrigíveis, recuperação comprovada e nenhuma perda de dados ao atualizar.
 

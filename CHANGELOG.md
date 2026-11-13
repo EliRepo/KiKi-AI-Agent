@@ -1,5 +1,13 @@
 # Atualizações
 
+## M04 e recuperação M10 — Busca conferível e cópias verificadas
+
+- Busca com palavras inteiras e normalização de acentos; 12 perguntas de aceitação com dados fictícios.
+- Janela com os trechos exatos enviados ao modelo e aviso para IDs citados que não estavam no contexto. Isso não valida a verdade das afirmações.
+- Recuperação em destino novo, origem somente para leitura, verificação de integridade/esquema e recusa de sobrescrita, arquivo ausente/corrompido ou versão futura.
+- Demonstração reproduzível com registros fictícios em memória e configurações temporárias.
+- 42 testes locais aprovados, incluindo recuperação de banco antigo e leitura da memória no tamanho mínimo da janela. Retenção e substituição operacional do banco continuam manuais; nenhum aceite novo de qualidade do Ollama foi inferido.
+
 ## M03 — Memória corrigível e atualização de bancos
 
 - Lista de registros selecionável, leitura completa, editor separado e exclusão confirmada; cancelar não altera o banco e não perde o rascunho de novo registro.

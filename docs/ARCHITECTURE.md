@@ -31,10 +31,11 @@ flowchart TD
 ## Fluxos atuais
 
 1. Registro: texto → botão Guardar → INSERT parametrizado → atualização da listagem.
-2. Consulta: pergunta → busca textual → até 8 registros, 500 caracteres cada → Ollama → resposta. Não existe histórico persistente de conversa.
+2. Consulta: pergunta → busca textual por palavras inteiras → até 8 registros, 500 caracteres cada → Ollama → resposta. A fila preserva o contexto enviado para inspeção posterior; IDs citados que não estavam nele geram aviso. Não existe histórico persistente de conversa.
 3. Lembrete: frase opcional → parser determinístico → campos preenchidos → conferência → botão Criar → persistência.
 4. Aviso: ciclo de 15 segundos consulta vencidos não avisados → janela com som → reconhecimento → pendência continua até conclusão.
 5. Backup: seletor de destino → API SQLite backup → arquivo fechado após cópia.
+6. Recuperação: abrir origem somente para leitura → conferir integridade e esquema → criar destino exclusivamente novo → backup SQLite → conferir integridade do resultado. O banco em uso não é trocado.
 
 SQLite permanece na thread principal. A chamada HTTP roda em thread de trabalho e devolve resultados por fila, evitando travar a janela. Não mover conexões SQLite entre threads. O fechamento durante uma consulta encerra a interface; a resposta não será persistida.
 
@@ -67,6 +68,8 @@ Pedidos com várias alterações, como registro mais lembrete, precisarão de tr
 ## Evolução e limites
 
 - Primeiro testar busca textual; embeddings só serão considerados se as perguntas de aceitação demonstrarem necessidade.
+- Busca compara tokens inteiros normalizados, sem acentos e palavras funcionais. Empates mantêm registros mais recentes primeiro. Não oferece sinônimos, flexões ou busca semântica. Os testes de aceitação usam IDs esperados e não dependem de resposta do modelo.
+- `ui/sources.py` mostra os trechos exatos enviados na consulta, mesmo que o registro seja editado depois. A checagem de citações em `application/context.py` reconhece [ID] e #ID; presença do ID não comprova que o registro sustenta a afirmação, e outros formatos de citação não são interpretados.
 - Primeiro testar o modelo pequeno; não aumentar o consumo sem medir com programas de trabalho abertos.
 - Configuração persistente fica em `infrastructure/settings.py`; diagnóstico local em `application/diagnostics.py`. A seção Configuração no menu lateral permite escolher o modelo e verificar `/api/tags` sem enviar registros. O endpoint permanece fixo em loopback.
 - `ui/workspace.py` organiza quatro páginas persistentes e a navegação lateral. Trocar de página não recria os campos nem acessa o banco. Conversa é a página inicial; a seção Configuração ainda usa a área central, até M09.3.

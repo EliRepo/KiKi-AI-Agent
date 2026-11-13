@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from kiki.domain.reminders import parse_reminder
 from kiki.infrastructure.ollama import ask_ollama, OllamaError
-from kiki.application.context import retrieve_context
+from kiki.application.context import retrieve_context, unverified_citations
 from kiki.application.diagnostics import diagnose
 from kiki.infrastructure.settings import Settings, data_directory
 from kiki.ui.workspace import Workspace
@@ -15,6 +15,8 @@ from kiki.ui import appearance as a
 from kiki.ui.rounded import RoundedButton, RoundedPanel, entry, chooser
 from kiki.ui.note_editor import NoteEditor
 from kiki.domain.notes import NoteNotFoundError
+from kiki.ui.sources import SourceViewer
+from kiki.infrastructure.recovery import restore_backup_copy
 
 class App:
     def __init__(self, root, memory, settings=None, folder=None):
@@ -25,6 +27,7 @@ class App:
         self.messages = queue.Queue()
         self.record_query = ''
         self.note_editor = None
+        self.context_sources = ()
         root.title('KiKi • assistente local')
         root.geometry('1180x780')
         root.minsize(960, 680)
@@ -38,7 +41,7 @@ class App:
         ttk.Label(notes, text='Escreva um registro para guardar ou palavras para buscar:').pack(anchor='w')
         note_panel = RoundedPanel(notes)
         note_panel.pack(fill='x', pady=8)
-        self.note = tk.Text(note_panel.body, width=1, height=5, wrap='word', font=(a.FONT, 11), bg=a.SURFACE)
+        self.note = tk.Text(note_panel.body, width=1, height=3, wrap='word', font=(a.FONT, 11), bg=a.SURFACE)
         self.note.pack(fill='x', pady=8)
         buttons = ttk.Frame(notes)
         buttons.pack(fill='x')
@@ -102,6 +105,9 @@ class App:
         self.question.bind('<Return>', lambda event: self.ask())
         ttk.Label(chat, text='A IA recebe até 8 registros encontrados pela busca. Confira as respostas.',
                   wraplength=600, foreground=a.MUTED, font=(a.FONT, 9)).pack(side='bottom', anchor='w')
+        self.source_button = RoundedButton(chat, text='Fontes da consulta', command=self.show_sources, width=310)
+        self.source_button.configure(state='disabled')
+        self.source_button.pack(side='bottom', anchor='w', pady=(8, 4))
         transcript.pack(fill='both', expand=True)
         config = self.workspace.add('config', 'Configuração', 'Escolha o modelo e verifique o ambiente. Nenhum download é iniciado automaticamente.', bottom=True)
         ttk.Label(config, text='Aparência e leitura', font=(a.FONT, 13, 'bold')).pack(anchor='w', pady=(0, 8))
@@ -132,6 +138,7 @@ class App:
         self.check = RoundedButton(config, text='Verificar ambiente', command=self.run_diagnostics)
         self.check.pack(anchor='w', pady=8)
         RoundedButton(config, text='Salvar cópia de segurança…', command=self.backup).pack(anchor='w', pady=(0, 8))
+        RoundedButton(config, text='Restaurar cópia em novo arquivo…', command=self.restore_copy, width=335).pack(anchor='w', pady=(0, 8))
         self.diagnostic_result = tk.Text(config, width=1, wrap='word', state='disabled', font=(a.FONT, 11))
         self.diagnostic_result.pack(fill='both', expand=True)
         self.display(self.diagnostic_result, f'Dados: {self.folder}\n\nClique em Verificar ambiente. A verificação não envia registros para a IA.')
@@ -233,6 +240,23 @@ class App:
         self.due.insert(0, due.strftime('%d/%m/%Y %H:%M'))
         self.status.set('Confira a descrição e a data. Clique em Criar lembrete para salvar.')
 
+    def restore_copy(self):
+        source = filedialog.askopenfilename(title='Escolha a cópia de segurança da KiKi',
+                                            filetypes=[('Banco SQLite', '*.sqlite3')])
+        if not source:
+            return
+        destination = filedialog.asksaveasfilename(title='Restaurar em arquivo novo — o banco atual será preservado',
+                                                  initialfile='KiKi-restaurada.sqlite3', defaultextension='.sqlite3',
+                                                  filetypes=[('Banco SQLite', '*.sqlite3')])
+        if not destination:
+            return
+        try:
+            restored = restore_backup_copy(source, destination)
+        except (ValueError, OSError, sqlite3.Error) as error:
+            messagebox.showerror('Cópia não restaurada', str(error), parent=self.root)
+            return
+        self.status.set(f'Cópia verificada e restaurada em {restored}. O banco atual não foi substituído.')
+
     def show_records(self, query):
         self.record_query = query
         rows = self.memory.search(query)
@@ -254,6 +278,8 @@ class App:
             return None
 
     def preview_note(self):
+        if not self.record_list.selection():
+            return
         note = self.selected_note()
         if note is not None:
             dates = f'Criado: {note.created}' + (f' • Alterado: {note.updated}' if note.updated else '')
@@ -342,8 +368,12 @@ class App:
                 answer = str(error) + '\n\nSua memória e seus lembretes continuam disponíveis.'
             except Exception:
                 answer = 'Não consegui consultar o Ollama local. Abra Configuração no menu à esquerda e clique em Verificar ambiente.\n\nSua memória e seus lembretes continuam disponíveis.'
-            self.messages.put((question, answer, succeeded))
+            self.messages.put((question, answer, succeeded, tuple(records)))
         threading.Thread(target=worker, daemon=True).start()
+
+    def show_sources(self):
+        if self.context_sources:
+            return SourceViewer(self.root, self.context_sources, font_size=self.settings.font_size)
 
     def poll(self):
         try:
@@ -352,12 +382,20 @@ class App:
         except queue.Empty:
             pass
         try:
-            question, answer, succeeded = self.messages.get_nowait()
+            question, answer, succeeded, sources = self.messages.get_nowait()
+            self.context_sources = sources
+            self.source_button.text = f'Ver {len(sources)} registro(s) enviado(s) à IA' if sources else 'Consulta sem registros de memória'
+            self.source_button.configure(state='normal' if sources else 'disabled')
+            missing = unverified_citations(answer, sources) if succeeded else []
+            if missing:
+                answer += '\n\nAtenção: a resposta citou IDs não enviados nesta consulta: ' + ', '.join(f'[{i}]' for i in missing) + '. Confira as fontes.'
             author = 'KiKi' if succeeded else 'Falha na consulta'
             self.display(self.answer, f'Você: {question}\n\n{author}: {answer}')
             self.send.configure(state='normal')
             self.status.set('Pronta. A conversa não foi salva como registro.' if succeeded else
                             'Falha na consulta. Confira a mensagem e tente novamente. Memória e lembretes disponíveis.')
+            if missing:
+                self.status.set('Resposta com citações não verificadas. Confira o aviso e as fontes da consulta.')
         except queue.Empty:
             pass
         self.root.after(200, self.poll)

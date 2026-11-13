@@ -45,12 +45,15 @@ class Memory:
                 raise NoteConflictError('O registro foi alterado. Confira a nova versão antes de excluir.')
 
     def search(self, query):
-        stopwords = {'como', 'qual', 'que', 'para', 'uma', 'com', 'foi', 'dos', 'das', 'sobre', 'resolvi', 'problema'}
+        stopwords = {'como', 'qual', 'quais', 'que', 'para', 'uma', 'com', 'foi', 'dos', 'das',
+                     'sobre', 'resolvi', 'problema', 'fiz', 'fez', 'feito', 'fazer', 'eu', 'voce',
+                     'meu', 'minha', 'meus', 'minhas', 'quero', 'saber', 'pode', 'poderia', 'favor'}
         words = set(re.findall(r'\w+', normalize(query))) - stopwords
-        rows = self.db.execute('SELECT id,text,created FROM notes ORDER BY id DESC').fetchall()
         if not query.strip():
-            return rows[:50]
-        scored = [(sum(w in normalize(row[1]) for w in words if len(w) > 1), row) for row in rows]
+            return self.db.execute('SELECT id,text,created FROM notes ORDER BY id DESC LIMIT 50').fetchall()
+        rows = self.db.execute('SELECT id,text,created FROM notes ORDER BY id DESC').fetchall()
+        words = {word for word in words if len(word) > 1}
+        scored = [(len(words & set(re.findall(r'\w+', normalize(row[1])))), row) for row in rows]
         return [row for score, row in sorted(scored, key=lambda item: item[0], reverse=True) if score][:20]
 
     def add_task(self, text, due):

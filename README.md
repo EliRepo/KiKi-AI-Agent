@@ -18,6 +18,8 @@ Ou abra `scripts/start.cmd`. Memória e lembretes não exigem bibliotecas Python
 
 - Registros persistentes em SQLite, edição, exclusão confirmada e busca textual que ignora acentos.
 - Atualização transacional de bancos antigos, com cópia automática antes da migração e proteção contra sobrescrita de uma edição desatualizada.
+- Busca por palavras inteiras, fontes enviadas à IA visíveis e alerta para citações de IDs ausentes.
+- Recuperação de backup verificada em arquivo novo, sem substituir o banco atual.
 - Lembretes com data explícita e preenchimento por frases como “amanhã às 10h”.
 - Avisos com o aplicativo aberto e computador acordado.
 - Backup manual consistente do banco.
