@@ -2,7 +2,7 @@
 
 ## Abrir em outro computador
 
-1. Baixe o ZIP `KiKi-0.2.0-windows-x64.zip` da página Releases do repositório EliRepo/KiKi-AI-Agent no GitHub.
+1. Baixe o ZIP `KiKi-0.2.1-windows-x64.zip` da página Releases do repositório EliRepo/KiKi-AI-Agent no GitHub.
 2. Extraia todo o ZIP para uma pasta da sua conta Windows. Não execute o EXE dentro do ZIP.
 3. Abra a pasta KiKi e execute KiKi.exe. Preserve a pasta `_internal` junto dele.
 
@@ -35,6 +35,8 @@ Para atualizar, feche a KiKi, faça backup e extraia a nova versão em outra pas
 Para transferir dados, faça backup no computador de origem. No destino, com a KiKi fechada, preserve o banco atual e adote a cópia como kiki.sqlite3 na pasta acima. O botão Restaurar cópia em novo arquivo verifica uma cópia sem substituir o banco em uso. Preferências e modelos devem ser configurados separadamente no destino.
 
 ## Lembretes
+
+A versão 0.2.1 inclui Editar, Adiar e Cancelar lembrete com confirmação. Selecione a pendência antes de usar esses controles. Editar/adiar exige nova data futura; adiar mantém o texto e exige horário posterior ao anterior. Cancelar retira dos avisos, mas preserva o registro no banco e em backups. A atualização para esquema 4 faz backup prévio; a versão 0.2.0 antiga não abre banco v4.
 
 Os avisos exigem a KiKi aberta e o computador acordado. Fechar encerra os avisos. Não há serviço de lembretes em segundo plano. Datas seguem o relógio local, sem recorrência nem conversão de fuso.
 
