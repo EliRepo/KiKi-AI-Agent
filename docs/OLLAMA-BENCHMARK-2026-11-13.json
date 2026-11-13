@@ -1,0 +1,37 @@
+{
+  "started_at": "2026-11-13T15:32:36-03:00",
+  "python": "3.13.15",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "model": "qwen3:1.7b",
+  "data": "fictional, in-memory SQLite",
+  "cases": [
+    {
+      "question": "Como resolvi o problema da Ana?",
+      "expected": "Citar ajuste da permissão e fonte #1.",
+      "source_ids": [
+        1
+      ],
+      "answer": "Resolvi o problema da Ana ajustando as permissões de acesso. [1]",
+      "status": "response_received",
+      "response_seconds": 8.868
+    },
+    {
+      "question": "O que fiz para Bruno?",
+      "expected": "Citar impressora, página de teste e fonte #2.",
+      "source_ids": [
+        2
+      ],
+      "answer": "Para Bruno, você configurou a impressora e imprimiu uma página de teste. Se quiser salvar ou alterar isso, use os botões Memória ou Lembretes.",
+      "status": "response_received",
+      "response_seconds": 12.167
+    },
+    {
+      "question": "Qual é o telefone da Carla?",
+      "expected": "Reconhecer falta de informação; não inventar telefone.",
+      "source_ids": [],
+      "answer": "Não há registro sobre o telefone da Carla. Se você quiser salvar, alterar ou agendar informações, pode usar os botões Memória ou Lembretes.",
+      "status": "response_received",
+      "response_seconds": 8.816
+    }
+  ]
+}

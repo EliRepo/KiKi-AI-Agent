@@ -2,7 +2,7 @@
 
 Assistente pessoal para Windows, com memória local, lembretes e conversa opcional via Ollama. Projetada inicialmente para Ryzen 5 5500U, 12 GB de RAM e SSD. O desempenho nesse equipamento ainda precisa ser medido.
 
-**Estado: protótipo modular v0.1.0.** A conversa ainda não executa ferramentas: salvar registros e agendar são ações pelos botões.
+**Estado: protótipo modular v0.1.0.** Pedidos explícitos no chat podem propor um registro e/ou lembrete, executados somente após conferência e confirmação na interface. Perguntas comuns usam o Ollama; suas respostas não executam ferramentas.
 
 ## Começar
 
@@ -16,8 +16,13 @@ Ou abra `scripts/start.cmd`. Memória e lembretes não exigem bibliotecas Python
 
 ## Funcionalidades atuais
 
-- Registros persistentes em SQLite e busca textual que ignora acentos.
+- Registros persistentes em SQLite, edição, exclusão confirmada e busca textual que ignora acentos.
+- Atualização transacional de bancos antigos, com cópia automática antes da migração e proteção contra sobrescrita de uma edição desatualizada.
+- Busca por palavras inteiras, fontes enviadas à IA visíveis e alerta para citações de IDs ausentes.
+- Recuperação de backup verificada em arquivo novo, sem substituir o banco atual.
 - Lembretes com data explícita e preenchimento por frases como “amanhã às 10h”.
+- Pedidos “Guarde: texto” e “Lembre-me de conferir Ana amanhã às dez”, com coleta de dados ausentes, proposta tipada e confirmação por ID.
+- Registro e lembrete juntos em uma transação; confirmação repetida do mesmo pedido não duplica gravações.
 - Avisos com o aplicativo aberto e computador acordado.
 - Backup manual consistente do banco.
 - Adaptador Ollama local com contexto limitado e resposta em português.
@@ -44,7 +49,7 @@ Ou abra `scripts/start.cmd`. Memória e lembretes não exigem bibliotecas Python
 py -3 -m unittest discover -s tests -v
 ```
 
-Os testes não baixam modelos nem enviam dados à rede. O adaptador Ollama usa resposta simulada nos testes. A validação integrada e o benchmark no computador de destino continuam pendentes. A [CI da primeira publicação](https://github.com/EliRepo/KiKi-AI-Agent/actions/runs/43322972528) passou em Windows/Linux e Python 3.11–3.13. Testes de interface são ignorados quando o ambiente não tem display; foram executados localmente no Windows.
+Os testes não baixam modelos nem enviam dados à rede. O adaptador Ollama usa resposta simulada nos testes. A entrega M02 em avaliação local tem um [ensaio real com Ollama](docs/VALIDACAO-OLLAMA-2026-11-13.md) no Intel i5-1334U/16 GB. Qualidade, citações e aceitação offline ainda têm pendências. A [CI da primeira publicação](https://github.com/EliRepo/KiKi-AI-Agent/actions/runs/43322972528) passou em Windows/Linux e Python 3.11–3.13. Testes de interface são ignorados quando o ambiente não tem display; foram executados localmente no Windows.
 
 ## Estrutura
 
@@ -52,7 +57,7 @@ Os testes não baixam modelos nem enviam dados à rede. O adaptador Ollama usa r
 kiki/
   __main__.py        # inicialização e composição
   domain/            # texto e interpretação limitada de datas
-  application/       # seleção de contexto
+  application/       # contexto, coordenador e ferramentas confirmadas
   infrastructure/    # SQLite e adaptador Ollama
   ui/                # interface Tkinter
 tests/               # persistência, backup, datas, contrato HTTP

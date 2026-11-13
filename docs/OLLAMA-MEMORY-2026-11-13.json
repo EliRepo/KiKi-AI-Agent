@@ -1,0 +1,7 @@
+{
+  "metric": "sum_of_ollama_and_llama_server_process_working_sets",
+  "peak_bytes": 1964843008.0,
+  "sample_interval_ms": 500,
+  "sample_count": 28,
+  "exit_code": 0
+}

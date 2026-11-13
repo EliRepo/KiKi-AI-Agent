@@ -1,5 +1,36 @@
 # Atualizações
 
+## M05–M07 — Pedidos explícitos e ferramentas confirmadas
+
+- Gramática local para guardar, lembrar e cenário combinado, com perguntas sobre campos ausentes e horas por extenso limitadas.
+- Propostas imutáveis por ID, estados de execução e janela de conferência. Cancelar não grava; respostas livres do modelo não executam ações.
+- Registro/lembrete e comprovante numa transação; falha na segunda ação reverte a primeira. Comprovante persistente impede repetição do mesmo ID/conteúdo, inclusive após reabrir o banco.
+- Esquema 3 com atualização preservando dados e backup prévio. Demonstração com dados fictícios aberta para conferência.
+- 59 testes locais aprovados, cobrindo domínio, coordenador, persistência e interface; evidências e limites em docs/VALIDACAO-AGENTE-2026-11-13.md. Sem novo aceite de qualidade do Ollama ou publicação remota.
+
+## M04 e recuperação M10 — Busca conferível e cópias verificadas
+
+- Busca com palavras inteiras e normalização de acentos; 12 perguntas de aceitação com dados fictícios.
+- Janela com os trechos exatos enviados ao modelo e aviso para IDs citados que não estavam no contexto. Isso não valida a verdade das afirmações.
+- Recuperação em destino novo, origem somente para leitura, verificação de integridade/esquema e recusa de sobrescrita, arquivo ausente/corrompido ou versão futura.
+- Demonstração reproduzível com registros fictícios em memória e configurações temporárias.
+- 42 testes locais aprovados, incluindo recuperação de banco antigo e leitura da memória no tamanho mínimo da janela. Retenção e substituição operacional do banco continuam manuais; nenhum aceite novo de qualidade do Ollama foi inferido.
+
+## M03 — Memória corrigível e atualização de bancos
+
+- Lista de registros selecionável, leitura completa, editor separado e exclusão confirmada; cancelar não altera o banco e não perde o rascunho de novo registro.
+- Esquema 2, com revisão e data de alteração; IDs excluídos não são reutilizados. Edições/exclusões desatualizadas são recusadas.
+- Migração transacional dos bancos v0/v1, com cópia automática consistente antes da atualização, rollback e recusa de versões futuras/estrutura desconhecida.
+- 33 testes locais aprovados nesta etapa; nenhuma dependência nova ou alteração no contrato de lembretes.
+
+## M02 — Inferência real e tratamento de falhas (avaliação local)
+
+- Ollama 0.40.16 portátil e qwen3:1.7b preparados no i5-1334U/16 GB; primeiro ensaio real documentado em docs/VALIDACAO-OLLAMA-2026-11-13.md, com respostas e tempos preservados.
+- Registros enviados ao modelo com campos identificados e orientação de contexto ajustada após falhas reais de qualidade. Citações ainda precisam de avaliação.
+- Mensagens específicas para serviço indisponível, conexão interrompida, timeout, modelo ausente, HTTP e resposta inválida/vazia. Interface distingue falha e permite nova tentativa.
+- Diagnóstico reconhece executável portátil; adicionados iniciador local do Ollama e benchmark opcional com dados fictícios em memória.
+- 22 testes locais aprovados. Consulta pela janela real demonstrada. Internet desligada e aceite de desempenho/qualidade continuam pendentes; sem publicação remota desta entrega.
+
 ## Primeira publicação no GitHub
 
 - Base modular e refinamentos integrados à main pelo PR #1, com remoção do código C anterior.

@@ -10,7 +10,7 @@ cd KiKi-AI-Agent
 py -3 -m kiki
 ```
 
-Se recebeu um ZIP, extraia e abra `scripts/start.cmd`. A branch `feat/kiki-modular-foundation` contém a entrega para revisão enquanto o pull request não for integrado à main.
+Se recebeu um ZIP, extraia e abra `scripts/start.cmd`. O iniciador prefere `.venv\Scripts\python.exe`, quando esse ambiente já existir; caso contrário usa `py -3`. Criar o ambiente é opcional: `py -3 -m venv .venv`. A base publicada está na main; as entregas posteriores estão em avaliação local.
 
 ## Ollama local
 
@@ -29,7 +29,43 @@ ollama list
 
 O download requer internet. O endpoint usado é `http://127.0.0.1:11434/api/chat`; a KiKi ignora proxies nessa chamada. Não configure `OLLAMA_HOST` para expor o serviço à rede. Documentação da API: https://docs.ollama.com/api/chat e configuração: https://docs.ollama.com/faq . Não há provedor online alternativo na KiKi.
 
+### Instalação portátil usada neste computador
+
+O pacote oficial Ollama 0.40.16 foi extraído em `%LOCALAPPDATA%\Programs\Ollama`, com SHA-256 verificado. Essa instalação não adicionou atalho, entrada no PATH nem inicialização automática. Para iniciar o serviço manualmente, abra `scripts/start-ollama.cmd`: ele usa essa pasta, desativa nuvem e fixa o servidor em `127.0.0.1:11434`. Mantenha o serviço aberto enquanto conversa. Se outro Ollama já estiver atendendo nessa porta, não inicie uma segunda instância. A KiKi continua sendo aberta por `scripts/start.cmd`.
+
+Se o comando não estiver no PATH, use no PowerShell:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" list
+```
+
+O diagnóstico reconhece tanto o comando no PATH quanto o executável nessa pasta. Modelos ficam em `%USERPROFILE%\.ollama\models`, fora do repositório. O modelo qwen3:1.7b já foi baixado neste computador. Referência oficial para o pacote portátil: https://docs.ollama.com/windows .
+
+### Ensaio real, opcional
+
+Na raiz do checkout, com Ollama aberto e modelo instalado:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.benchmark_ollama --output resultado-local.json
+```
+
+Esse comando envia três perguntas com registros fictícios em SQLite na memória, sem abrir o banco pessoal. Não instala nem baixa modelos. O arquivo contém perguntas, respostas e duração; receber uma resposta não significa que seu conteúdo passou na avaliação. Confira fatos e citações manualmente. Os testes unitários continuam sem rede ou downloads.
+
+A conversa agora diferencia indisponibilidade, timeout de 180 segundos, modelo ausente e resposta inválida. Uma falha fica identificada como falha, preserva a pergunta e libera o botão para tentar novamente. Não há repetição automática de consultas.
+
 ## Dados e recuperação
+
+### Edição e exclusão de registros
+
+Em Memória, selecione uma linha para ler o texto completo abaixo. **Editar selecionado** (ou duplo clique/Enter na linha) abre uma janela separada; **Salvar alterações** grava a correção. O rascunho de um novo registro permanece no campo principal. Cancelar ou fechar o editor pede confirmação se houver mudanças ainda não salvas.
+
+**Excluir selecionado…** mostra ID e prévia antes da confirmação. Cancelar não muda o banco. A exclusão não tem desfazer e não apaga cópias de segurança já existentes. Se o registro mudar enquanto a confirmação/editor estiver aberto, a KiKi recusa a versão antiga e pede nova conferência.
+
+### Atualização automática do banco
+
+O esquema atual é a versão 3. Ao abrir um banco anterior, a KiKi cria uma cópia consistente na mesma pasta, com nome `kiki.pre-migration-v0-<identificador>.sqlite3` (ou v1/v2), antes de atualizar. A cópia contém os dados anteriores e deve receber o mesmo cuidado de privacidade do banco. Falha no backup impede a migração. Falha na migração reverte as alterações; não apague o banco para resolver um erro. Bancos de versões futuras são recusados para evitar perda de dados.
+
+IDs, textos e datas de criação são preservados. Lembretes não mudam. As cópias automáticas não têm exclusão nem retenção automática nesta etapa.
 
 ### Cores e tipografia
 
@@ -43,6 +79,18 @@ Banco: `%LOCALAPPDATA%\KiKi\kiki.sqlite3`. Compatível com o protótipo anterior
 
 Para restaurar, feche a KiKi. Preserve uma cópia do banco atual, copie o backup para essa pasta com o nome `kiki.sqlite3` e reabra. Não substitua o banco com a aplicação aberta. Não guarde dados reais no repositório.
 
+Antes de adotar um backup, use em Configuração **Restaurar cópia em novo arquivo…**. Escolha a origem e um nome que ainda não existe. A KiKi verifica integridade e estrutura, abre a origem só para leitura e cria uma cópia consistente. Não sobrescreve arquivos nem troca a memória em uso; o resultado aparece na barra de estado. Um destino já existente, arquivo corrompido, ausente ou de versão futura é recusado. Só depois da verificação, com a KiKi fechada, siga o procedimento acima para adotar o arquivo restaurado. A política de retenção continua manual.
+
+### Conferir fontes de uma resposta
+
+Depois da consulta, **Ver N registro(s) enviado(s) à IA** abre os trechos exatos entregues ao modelo, com IDs e datas. São no máximo oito registros de 500 caracteres, capturados no momento do envio; alterações posteriores na memória não mudam essa conferência. Quando a busca não encontra registros, a interface indica uma consulta sem registros.
+
+IDs citados nos formatos `[123]` ou `#123` que não estavam no contexto enviado geram aviso. Isso não verifica a verdade da resposta nem detecta todos os formatos de citação. Confira o texto da fonte mesmo quando não houver alerta.
+
+A busca ignora acentos e compara palavras inteiras, evitando Ana/Mariana. Não compreende sinônimos ou variações de palavras; tente termos que estejam no registro.
+
+Para explorar a interface sem dados pessoais, execute `.\.venv\Scripts\python.exe -m scripts.demo_workspace`. O título identifica a demonstração; banco em memória e configurações temporárias são descartados ao fechar. O chat usa Ollama real se estiver disponível; não há respostas simuladas nessa demonstração.
+
 ## Limites operacionais
 
 - Use uma instância por vez.
@@ -50,8 +98,29 @@ Para restaurar, feche a KiKi. Preserve uma cópia do banco atual, copie o backup
 - O computador deve estar ligado e acordado; ao reabrir, lembretes vencidos ainda não avisados aparecem.
 - Avisos são janelas do aplicativo, não notificações nativas do Windows.
 - Datas usam o horário do computador. Não há conversão de fuso, recorrência ou interpretação de “semana que vem”.
-- A conversa não é persistida e não salva nem agenda ações.
+- A conversa não é persistida. Pedidos explícitos podem salvar/agendar após confirmação; respostas livres do Ollama não executam ações.
 - Busca é textual, sem sinônimos; contexto pode omitir partes longas de registros.
+
+## Pedidos com ações confirmadas
+
+Digite na conversa um destes formatos:
+
+- `Guarde: Atendi Ana e corrigi a permissão.`
+- `Lembre-me de conferir Ana amanhã às 10h`.
+- `Guarde: Ana atendida; lembre-me de conferir Ana amanhã às 10h`.
+- `Atendi Ana, corrigi a permissão e quero conferir amanhã às dez`.
+
+A gramática reconhece também Salve/Registre/Anote, Me lembre de, Crie um lembrete para e Agende. Não é compreensão geral de linguagem natural. Use hoje, amanhã ou DD/MM/AAAA e horário de 24 horas: `às 10h`, `às 10:30`, `às dez`, `às dez e meia`. Não há recorrência ou inferência de “da noite”; use `às 22h`.
+
+Sem descrição/data/horário válidos, a KiKi pergunta o que falta e não grava nada. Reenvie o pedido completo com a correção: a resposta seguinte não é combinada automaticamente com o pedido anterior. No cenário combinado, a descrição do lembrete conserva o relato como referência; confira o texto e a data na janela.
+
+Uma proposta pronta abre **Confira antes de confirmar**, com ID, textos e data completa. **Confirmar e executar** grava as ações; **Cancelar**, Escape ou fechar a janela não grava. Para ajustar a proposta, cancele e reenvie o pedido. Digitar “sim” no chat não é confirmação. Fechar a KiKi descarta propostas pendentes sem executá-las.
+
+O resultado informa os IDs efetivamente gravados. Registro e lembrete juntos são uma única transação; falha não anuncia sucesso. Se o horário passar enquanto você confere, a proposta falha e exige novo pedido. Confirmação repetida do mesmo ID não duplica as gravações, mas reenviar o texto gera outro ID e pode repetir os dados se for confirmado de novo.
+
+Esses pedidos funcionam sem Ollama: o modelo não escolhe ferramentas. Editar/excluir registros e concluir lembretes continuam pelos botões. Os comprovantes de execução ficam no banco e no backup; não há política automática de retenção.
+
+Para demonstrar com dados fictícios: `.\.venv\Scripts\python.exe -m scripts.demo_workspace --agent-demo`. Abre somente a proposta para conferência; não confirma nem executa automaticamente.
 
 ## Aceitação manual
 
@@ -62,4 +131,4 @@ Para restaurar, feche a KiKi. Preserve uma cópia do banco atual, copie o backup
 5. Desconecte a internet e repita. Feche Ollama e confirme que memória/agenda continuam disponíveis.
 6. Faça backup; teste recuperação com dados fictícios e confira registros e pendências.
 
-Não há benchmark real registrado ainda. Informe tempos, memória observada e erros no ensaio para atualizar o roadmap.
+O [ensaio de 13/11/2026](VALIDACAO-OLLAMA-2026-11-13.md) registra inferência real, tempos, memória observada e falhas de qualidade. O teste com a conexão de internet desligada e a avaliação durante uma jornada de trabalho continuam pendentes.
