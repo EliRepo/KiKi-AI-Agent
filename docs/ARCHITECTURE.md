@@ -40,9 +40,11 @@ SQLite permanece na thread principal. A chamada HTTP roda em thread de trabalho 
 
 ## Persistência atual
 
-`notes(id, text, created)` e `tasks(id, text, due, done, alerted)`. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. O banco do protótipo anterior é compatível: as tabelas foram preservadas.
+Esquema 2 (`PRAGMA user_version`): `notes(id, text, created, updated, revision)` e `tasks(id, text, due, done, alerted)`. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
 
-Antes de mudanças de esquema, introduzir versão de esquema e migrações transacionais, com teste de atualização de um banco anterior. Não apagar nem recriar bancos do usuário para atualizar.
+`infrastructure/migrations.py` reconhece o banco original sem versão e a base na versão 1. Antes de atualizar um arquivo existente, cria uma cópia consistente na mesma pasta. A migração ocorre em uma transação; falha reverte esquema e versão. Bancos de versões futuras ou estrutura não reconhecida são recusados. A conexão é fechada se a inicialização falhar, com mensagem visível na abertura da KiKi.
+
+A migração 2 reconstrói a tabela de registros dentro da transação, preservando IDs/textos/datas e usando AUTOINCREMENT para impedir reutilização de IDs excluídos. Acrescenta data de alteração e revisão. Editar e excluir exigem a revisão lida anteriormente; linha ausente ou revisão divergente produz erro, sem anunciar sucesso. As operações não alteram cópias antigas de segurança. A interface usa uma lista selecionável, prévia completa, editor separado e confirmação explícita antes da exclusão.
 
 ## Arquitetura alvo do agente — planejada
 
@@ -67,7 +69,7 @@ Pedidos com várias alterações, como registro mais lembrete, precisarão de tr
 - Primeiro testar busca textual; embeddings só serão considerados se as perguntas de aceitação demonstrarem necessidade.
 - Primeiro testar o modelo pequeno; não aumentar o consumo sem medir com programas de trabalho abertos.
 - Configuração persistente fica em `infrastructure/settings.py`; diagnóstico local em `application/diagnostics.py`. A seção Configuração no menu lateral permite escolher o modelo e verificar `/api/tags` sem enviar registros. O endpoint permanece fixo em loopback.
-- `ui/workspace.py` organiza quatro páginas persistentes e a navegação lateral. Trocar de página não recria os campos nem acessa o banco. Conversa é a página inicial; a seção Configuração ainda usa a área central, até M09.3. Não há migração de esquema nesta entrega.
+- `ui/workspace.py` organiza quatro páginas persistentes e a navegação lateral. Trocar de página não recria os campos nem acessa o banco. Conversa é a página inicial; a seção Configuração ainda usa a área central, até M09.3.
 - `ui/appearance.py` centraliza as paletas violeta dos temas Claro/Escuro e reaplica cores sem reconstruir as páginas. `ui/rounded.py` fornece superfícies, botões, campos e seletores arredondados. Inter acompanha o aplicativo com licença e é registrada privadamente no Windows por `infrastructure/fonts.py`; nenhuma fonte do sistema é substituída.
 - Coordenador, ferramentas por conversa e lembretes em segundo plano ainda não existem.
 - Não há isolamento entre usuários, criptografia própria nem proteção contra malware na conta Windows.

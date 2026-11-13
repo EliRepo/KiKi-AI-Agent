@@ -2,17 +2,47 @@ import sqlite3
 import datetime as dt
 import re
 from kiki.domain.text import normalize
+from kiki.domain.notes import Note, NoteConflictError, NoteNotFoundError, validate_note_text
+from kiki.infrastructure.migrations import migrate
 
 class Memory:
     def __init__(self, path):
         self.db = sqlite3.connect(path)
-        self.db.execute('CREATE TABLE IF NOT EXISTS notes(id INTEGER PRIMARY KEY, text TEXT NOT NULL, created TEXT NOT NULL)')
-        self.db.execute('CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY, text TEXT NOT NULL, due TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, alerted INTEGER NOT NULL DEFAULT 0)')
-        self.db.commit()
+        try:
+            self.migration_backup = migrate(self.db)
+        except Exception:
+            self.db.close()
+            raise
 
     def save(self, text):
-        self.db.execute('INSERT INTO notes(text,created) VALUES (?,?)', (text, dt.datetime.now().isoformat(timespec='seconds')))
-        self.db.commit()
+        text = validate_note_text(text)
+        with self.db:
+            cursor = self.db.execute('INSERT INTO notes(text,created) VALUES (?,?)',
+                                     (text, dt.datetime.now().isoformat(timespec='seconds')))
+        return cursor.lastrowid
+
+    def get_note(self, note_id):
+        row = self.db.execute('SELECT id,text,created,updated,revision FROM notes WHERE id=?', (note_id,)).fetchone()
+        if row is None:
+            raise NoteNotFoundError('Esse registro não existe mais. Atualize a lista.')
+        return Note(*row)
+
+    def update_note(self, note_id, text, *, expected_revision):
+        text = validate_note_text(text)
+        with self.db:
+            cursor = self.db.execute('UPDATE notes SET text=?, updated=?, revision=revision+1 WHERE id=? AND revision=?',
+                                     (text, dt.datetime.now().isoformat(timespec='seconds'), note_id, expected_revision))
+            if cursor.rowcount != 1:
+                self.get_note(note_id)  # Distinguish a missing record from a changed revision.
+                raise NoteConflictError('O registro foi alterado. Reabra-o antes de salvar suas mudanças.')
+        return self.get_note(note_id)
+
+    def delete_note(self, note_id, *, expected_revision):
+        with self.db:
+            cursor = self.db.execute('DELETE FROM notes WHERE id=? AND revision=?', (note_id, expected_revision))
+            if cursor.rowcount != 1:
+                self.get_note(note_id)
+                raise NoteConflictError('O registro foi alterado. Confira a nova versão antes de excluir.')
 
     def search(self, query):
         stopwords = {'como', 'qual', 'que', 'para', 'uma', 'com', 'foi', 'dos', 'das', 'sobre', 'resolvi', 'problema'}

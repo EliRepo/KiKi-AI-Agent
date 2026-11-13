@@ -12,7 +12,7 @@ M02 em avaliação local: Ollama 0.40.16 e qwen3:1.7b instalados; consultas reai
 | --- | --- | --- | --- |
 | M01 | Configuração e diagnóstico | Implementado: configuração persistente, diagnóstico real do serviço/modelo em 13/11 e detecção portátil | Avaliação do responsável durante o uso |
 | M02 | Motor de IA local | Parcial: inferência real, tempos e memória registrados; falhas diferenciadas, incluindo 404 real | Qualidade/citações, uso diário, teste sem internet e timeout real |
-| M03 | Memória persistente | Parcial: guardar, buscar e reabrir testados | Editar, excluir, migrações e testes de atualização |
+| M03 | Memória persistente | Implementado localmente: edição, exclusão confirmada, esquema 2, backup pré-migração, rollback e conflitos testados | Avaliação visual e aceite no uso diário |
 | M04 | Busca de contexto | Parcial: busca sem acentos e contexto limitado | Conjunto de perguntas de aceitação, fontes visíveis e avaliação de relevância |
 | M05 | Entendimento de pedidos | Parcial: datas explícitas com validação | Intenções, campos obrigatórios e perguntas sobre dados ausentes |
 | M06 | Coordenador do agente | Planejado | Estados do pedido, ferramentas permitidas e resultados verificáveis |
@@ -41,7 +41,7 @@ Saída: decidir se Qwen3 1.7B atende à qualidade e ao desempenho necessários. 
 ### Fase 2 — Memória e operação confiáveis
 
 - [x] Configuração persistente e diagnóstico (M01); serviço/modelo reais verificados em 13/11/2026.
-- [ ] Edição/exclusão e migrações (M03).
+- [x] Edição/exclusão e migrações (M03): 33 testes locais aprovados nesta etapa, incluindo bancos v0/v1, rollback, backup, conflitos e interface.
 - [ ] Avaliação de busca com dados fictícios (M04).
 - [ ] Restauração de backup testada (M10).
 

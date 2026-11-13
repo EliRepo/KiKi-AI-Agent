@@ -55,6 +55,18 @@ A conversa agora diferencia indisponibilidade, timeout de 180 segundos, modelo a
 
 ## Dados e recuperação
 
+### Edição e exclusão de registros
+
+Em Memória, selecione uma linha para ler o texto completo abaixo. **Editar selecionado** (ou duplo clique/Enter na linha) abre uma janela separada; **Salvar alterações** grava a correção. O rascunho de um novo registro permanece no campo principal. Cancelar ou fechar o editor pede confirmação se houver mudanças ainda não salvas.
+
+**Excluir selecionado…** mostra ID e prévia antes da confirmação. Cancelar não muda o banco. A exclusão não tem desfazer e não apaga cópias de segurança já existentes. Se o registro mudar enquanto a confirmação/editor estiver aberto, a KiKi recusa a versão antiga e pede nova conferência.
+
+### Atualização automática do banco
+
+O esquema atual é a versão 2. Ao abrir um banco do protótipo anterior, a KiKi cria uma cópia consistente na mesma pasta, com nome `kiki.pre-migration-v0-<identificador>.sqlite3` (ou v1), antes de atualizar. A cópia contém os dados anteriores e deve receber o mesmo cuidado de privacidade do banco. Falha no backup impede a migração. Falha na migração reverte as alterações; não apague o banco para resolver um erro. Bancos de versões futuras são recusados para evitar perda de dados.
+
+IDs, textos e datas de criação são preservados. Lembretes não mudam. As cópias automáticas não têm exclusão nem retenção automática nesta etapa.
+
 ### Cores e tipografia
 
 Abra Configuração e escolha Claro ou Escuro. Ambos usam as respectivas paletas violeta. Selecione uma fonte disponível ou Automática e ajuste o tamanho entre 11 e 18. Salvar e aplicar atualiza a janela sem perder rascunhos e preserva a escolha para a próxima abertura. Inter acompanha o aplicativo e é carregada privadamente no Windows; não é preciso instalá-la no sistema. A fonte efetivamente aplicada aparece na tela. Segoe UI Variable só aparece se já estiver instalada. Consulte THIRD_PARTY_NOTICES.md.

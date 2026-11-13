@@ -13,6 +13,8 @@ from kiki.infrastructure.settings import Settings, data_directory
 from kiki.ui.workspace import Workspace
 from kiki.ui import appearance as a
 from kiki.ui.rounded import RoundedButton, RoundedPanel, entry, chooser
+from kiki.ui.note_editor import NoteEditor
+from kiki.domain.notes import NoteNotFoundError
 
 class App:
     def __init__(self, root, memory, settings=None, folder=None):
@@ -21,6 +23,8 @@ class App:
         self.folder = folder or data_directory()
         self.diagnostic_messages = queue.Queue()
         self.messages = queue.Queue()
+        self.record_query = ''
+        self.note_editor = None
         root.title('KiKi • assistente local')
         root.geometry('1180x780')
         root.minsize(960, 680)
@@ -41,8 +45,21 @@ class App:
         RoundedButton(buttons, text='Guardar registro', command=self.save).pack(side='left')
         RoundedButton(buttons, text='Buscar', command=self.search).pack(side='left', padx=8)
         RoundedButton(buttons, text='Recentes', command=lambda: self.show_records('')).pack(side='left')
-        self.records = tk.Text(notes, width=1, wrap='word', state='disabled', font=(a.FONT, 11))
-        self.records.pack(fill='both', expand=True, pady=12)
+        record_actions = ttk.Frame(notes)
+        record_actions.pack(fill='x', pady=(8, 0))
+        RoundedButton(record_actions, text='Editar selecionado', command=self.edit_note, width=175).pack(side='left')
+        RoundedButton(record_actions, text='Excluir selecionado…', command=self.delete_note, width=195).pack(side='left', padx=8)
+        self.record_list = ttk.Treeview(notes, columns=('id', 'text'), show='headings', selectmode='browse', height=4)
+        self.record_list.heading('id', text='Registro')
+        self.record_list.heading('text', text='Texto (selecione para ler abaixo)')
+        self.record_list.column('id', width=75, stretch=False)
+        self.record_list.column('text', width=300)
+        self.record_list.pack(fill='x', pady=(10, 4))
+        self.record_list.bind('<<TreeviewSelect>>', lambda event: self.preview_note())
+        self.record_list.bind('<Double-1>', lambda event: self.edit_note())
+        self.record_list.bind('<Return>', lambda event: self.edit_note())
+        self.records = tk.Text(notes, width=1, height=3, wrap='word', state='disabled', font=(a.FONT, 11))
+        self.records.pack(fill='both', expand=True, pady=(4, 8))
         ttk.Label(tasks, text='O que você precisa fazer?').pack(anchor='w')
         task_panel, self.task = entry(tasks)
         task_panel.pack(fill='x', pady=8)
@@ -140,7 +157,11 @@ class App:
         text = self.note.get('1.0', 'end').strip()
         if not text:
             return
-        self.memory.save(text)
+        try:
+            self.memory.save(text)
+        except (ValueError, sqlite3.Error) as error:
+            messagebox.showerror('Registro não salvo', str(error), parent=self.root)
+            return
         self.note.delete('1.0', 'end')
         self.show_records('')
         self.status.set('Registro salvo neste computador.')
@@ -213,8 +234,61 @@ class App:
         self.status.set('Confira a descrição e a data. Clique em Criar lembrete para salvar.')
 
     def show_records(self, query):
+        self.record_query = query
         rows = self.memory.search(query)
-        self.display(self.records, '\n\n'.join(f'#{i} • {created}\n{text}' for i, text, created in rows) or 'Nenhum registro encontrado.')
+        self.record_list.delete(*self.record_list.get_children())
+        for identifier, text, _ in rows:
+            self.record_list.insert('', 'end', iid=str(identifier), values=(f'#{identifier}', text.replace('\n', ' ')[:160]))
+        self.display(self.records, 'Selecione um registro para ler, editar ou excluir.' if rows else 'Nenhum registro encontrado.')
+
+    def selected_note(self):
+        selected = self.record_list.selection()
+        if not selected:
+            self.status.set('Selecione um registro na lista.')
+            return None
+        try:
+            return self.memory.get_note(int(selected[0]))
+        except NoteNotFoundError as error:
+            self.status.set(str(error))
+            self.show_records(self.record_query)
+            return None
+
+    def preview_note(self):
+        note = self.selected_note()
+        if note is not None:
+            dates = f'Criado: {note.created}' + (f' • Alterado: {note.updated}' if note.updated else '')
+            self.display(self.records, f'#{note.id} • {dates}\n\n{note.text}')
+
+    def edit_note(self):
+        if self.note_editor is not None and self.note_editor.winfo_exists():
+            self.note_editor.lift()
+            self.note_editor.text.focus_set()
+            return
+        note = self.selected_note()
+        if note is not None:
+            self.note_editor = NoteEditor(self.root, self.memory, note, self.note_saved,
+                                          font_size=self.settings.font_size)
+
+    def note_saved(self):
+        self.show_records(self.record_query)
+        self.status.set('Alterações salvas neste computador.')
+
+    def delete_note(self):
+        note = self.selected_note()
+        if note is None:
+            return
+        if not messagebox.askyesno('Excluir registro?',
+                                  f'Excluir o registro #{note.id}?\n\n{note.text[:250]}\n\n'
+                                  'A exclusão não tem desfazer. Cópias de segurança existentes não são alteradas.',
+                                  parent=self.root):
+            return
+        try:
+            self.memory.delete_note(note.id, expected_revision=note.revision)
+        except (ValueError, NoteNotFoundError, sqlite3.Error) as error:
+            messagebox.showerror('Registro não excluído', str(error), parent=self.root)
+            return
+        self.show_records(self.record_query)
+        self.status.set(f'Registro #{note.id} excluído da memória atual.')
 
     def add_task(self):
         text = self.task.get().strip()

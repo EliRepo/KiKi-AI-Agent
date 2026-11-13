@@ -1,5 +1,12 @@
 # Atualizações
 
+## M03 — Memória corrigível e atualização de bancos
+
+- Lista de registros selecionável, leitura completa, editor separado e exclusão confirmada; cancelar não altera o banco e não perde o rascunho de novo registro.
+- Esquema 2, com revisão e data de alteração; IDs excluídos não são reutilizados. Edições/exclusões desatualizadas são recusadas.
+- Migração transacional dos bancos v0/v1, com cópia automática consistente antes da atualização, rollback e recusa de versões futuras/estrutura desconhecida.
+- 33 testes locais aprovados nesta etapa; nenhuma dependência nova ou alteração no contrato de lembretes.
+
 ## M02 — Inferência real e tratamento de falhas (avaliação local)
 
 - Ollama 0.40.16 portátil e qwen3:1.7b preparados no i5-1334U/16 GB; primeiro ensaio real documentado em docs/VALIDACAO-OLLAMA-2026-11-13.md, com respostas e tempos preservados.

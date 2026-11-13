@@ -24,6 +24,8 @@ class WorkspaceTests(unittest.TestCase):
     def tearDown(self):
         if hasattr(self, 'memory'):
             self.root.update_idletasks()
+            for callback in self.root.tk.call('after', 'info'):
+                self.root.after_cancel(callback)
             self.root.destroy()
             self.memory.db.close()
 
@@ -94,6 +96,54 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(len(self.memory.tasks()), 1)
         self.app.workspace.select('chat')
         self.assertEqual(self.app.workspace.title.get(), 'Conversa')
+
+    def test_note_editor_saves_without_losing_the_new_note_draft(self):
+        identifier = self.memory.save('Ana: antigo')
+        self.app.show_records('Ana')
+        self.app.record_list.selection_set(str(identifier))
+        self.app.note.insert('1.0', 'Novo registro ainda não salvo')
+        self.app.edit_note()
+        editor = self.app.note_editor
+        editor.text.delete('1.0', 'end')
+        editor.text.insert('1.0', 'Ana: corrigido')
+        editor.save()
+        self.assertEqual(self.memory.get_note(identifier).text, 'Ana: corrigido')
+        self.assertEqual(self.app.note.get('1.0', 'end').strip(), 'Novo registro ainda não salvo')
+        self.assertEqual(self.app.record_query, 'Ana')
+
+    def test_delete_requires_confirmation_and_keeps_changed_record(self):
+        identifier = self.memory.save('Registro fictício')
+        self.app.show_records('')
+        self.app.record_list.selection_set(str(identifier))
+        with patch('kiki.ui.desktop.messagebox.askyesno', return_value=False):
+            self.app.delete_note()
+        self.assertEqual(self.memory.get_note(identifier).text, 'Registro fictício')
+        def change_before_confirmation(*args, **kwargs):
+            self.memory.update_note(identifier, 'Registro atualizado', expected_revision=1)
+            return True
+        with patch('kiki.ui.desktop.messagebox.askyesno', side_effect=change_before_confirmation), \
+             patch('kiki.ui.desktop.messagebox.showerror') as error:
+            self.app.delete_note()
+        error.assert_called_once()
+        self.assertEqual(self.memory.get_note(identifier).text, 'Registro atualizado')
+        with patch('kiki.ui.desktop.messagebox.askyesno', return_value=True):
+            self.app.delete_note()
+        self.assertEqual(self.memory.search(''), [])
+
+    def test_cancel_editor_preserves_stored_text(self):
+        identifier = self.memory.save('Original fictício')
+        self.app.show_records('')
+        self.app.record_list.selection_set(str(identifier))
+        self.app.edit_note()
+        editor = self.app.note_editor
+        editor.text.insert('end', ' modificado')
+        with patch('kiki.ui.note_editor.messagebox.askyesno', return_value=False):
+            editor.cancel()
+        self.assertTrue(editor.winfo_exists())
+        with patch('kiki.ui.note_editor.messagebox.askyesno', return_value=True):
+            editor.cancel()
+        self.assertFalse(editor.winfo_exists())
+        self.assertEqual(self.memory.get_note(identifier).text, 'Original fictício')
 
     def test_palette_switch_preserves_drafts_and_updates_colors(self):
         self.app.note.insert('1.0', 'Não perder este rascunho')
