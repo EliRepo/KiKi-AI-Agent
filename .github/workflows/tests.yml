@@ -2,6 +2,7 @@ name: Tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -17,3 +18,39 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -m unittest discover -s tests -v
+  windows-package:
+    needs: core
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r requirements-build.txt
+      - run: python -m scripts.build_windows
+      - name: Check packaged application without Python or user data
+        shell: pwsh
+        run: |
+          $app = Start-Process -FilePath ./dist/KiKi/KiKi.exe -ArgumentList '--smoke-test', 'build/smoke-packaged.json' -Wait -PassThru -WindowStyle Hidden
+          if ($app.ExitCode -ne 0) { throw 'Packaged application failed' }
+          $result = Get-Content -Raw build/smoke-packaged.json | ConvertFrom-Json
+          if (-not $result.ok) { throw 'Packaged smoke check failed' }
+          Get-Content build/smoke-packaged.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: KiKi-windows-x64
+          path: |
+            dist/KiKi-*-windows-x64.zip
+            dist/SHA256SUMS.txt
+            build/smoke-packaged.json
+          if-no-files-found: error
+      - name: Publish versioned preview
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $archive = (Get-ChildItem -Path dist -Filter 'KiKi-*-windows-x64.zip').FullName
+          gh release create $env:GITHUB_REF_NAME $archive dist/SHA256SUMS.txt --verify-tag --prerelease --title "KiKi $env:GITHUB_REF_NAME para Windows" --notes-file docs/RELEASE-v0.2.0.md

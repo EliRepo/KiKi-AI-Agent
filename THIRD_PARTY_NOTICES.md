@@ -1,5 +1,9 @@
 # Recursos de terceiros
 
+## Pacote Windows
+
+O pacote portátil inclui o interpretador Python e Tcl/Tk, com seus avisos/licenças em LICENSES e nos arquivos de runtime. O executável de inicialização é produzido por PyInstaller 6.22.3; a licença com exceção de distribuição acompanha LICENSES/PyInstaller.txt. PyInstaller e hooks são dependências de compilação, sem necessidade de instalação no computador de destino. Referência técnica: https://pyinstaller.org/en/stable/operating-mode.html . A compilação copia a licença do Python da distribuição utilizada e mantém os avisos dos recursos incluídos.
+
 ## Inter 4.1
 
 Autor: Rasmus Andersson e colaboradores. Distribuição oficial: https://github.com/rsms/inter/releases/tag/v4.1 .

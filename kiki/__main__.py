@@ -1,4 +1,5 @@
 import sqlite3
+import argparse
 import tkinter as tk
 from kiki.infrastructure.memory import Memory
 from kiki.ui.desktop import App
@@ -7,6 +8,12 @@ from tkinter import messagebox
 from kiki.infrastructure.fonts import load_bundled_fonts
 
 def main():
+    parser = argparse.ArgumentParser(description='KiKi — assistente pessoal local')
+    parser.add_argument('--smoke-test', metavar='RESULTADO_JSON', help=argparse.SUPPRESS)
+    args = parser.parse_args()
+    if args.smoke_test:
+        from kiki.smoke import run_smoke
+        return run_smoke(args.smoke_test)
     load_bundled_fonts()
     folder = data_directory()
     root = tk.Tk()

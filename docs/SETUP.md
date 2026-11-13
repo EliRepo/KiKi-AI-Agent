@@ -1,5 +1,7 @@
 # Instalação e operação no Windows 11
 
+Para usar sem instalar Python, prefira o ZIP Windows x64 em [Releases](https://github.com/EliRepo/KiKi-AI-Agent/releases). Extraia todo o conteúdo e abra KiKi/KiKi.exe. Instruções de atualização e transferência de dados em [USO-WINDOWS.md](USO-WINDOWS.md). As instruções de Python abaixo são para execução/desenvolvimento pelo código-fonte; o pacote inclui seu próprio runtime.
+
 ## Pré-requisitos
 
 Python 3.11+ com launcher `py` e Tcl/Tk: https://www.python.org/downloads/windows/ . Ollama é opcional para memória/agenda e necessário para conversar: https://ollama.com/download/windows . Reserve espaço para o modelo e faça primeiro o teste com dados fictícios.
