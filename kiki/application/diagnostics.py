@@ -1,5 +1,7 @@
 """Non-destructive checks; never send personal records to the model."""
 import json
+import os
+from pathlib import Path
 import platform
 import shutil
 import urllib.request
@@ -8,8 +10,14 @@ import urllib.request
 def diagnose(settings, folder):
     lines = [f'Python: {platform.python_version()}', f'Dados: {folder}',
              f'Modelo configurado: {settings.model}', 'Servidor: http://127.0.0.1:11434']
-    lines.append('Comando Ollama: encontrado.' if shutil.which('ollama') else
-                 'Comando Ollama: não encontrado no PATH. Se o serviço não responder, instale em ollama.com/download/windows.')
+    command = shutil.which('ollama')
+    local_programs = os.environ.get('LOCALAPPDATA')
+    if not command and local_programs:
+        candidate = Path(local_programs) / 'Programs' / 'Ollama' / 'ollama.exe'
+        if candidate.is_file():
+            command = str(candidate)
+    lines.append(f'Comando Ollama: encontrado em {command}.' if command else
+                 'Comando Ollama: não encontrado. Se o serviço não responder, instale em ollama.com/download/windows.')
     try:
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open('http://127.0.0.1:11434/api/tags', timeout=5) as response:
@@ -21,7 +29,7 @@ def diagnose(settings, folder):
         expected = settings.model if ':' in settings.model else settings.model + ':latest'
         lines.append('Ollama: serviço local acessível.')
         if expected in names:
-            lines.append('Modelo: instalado. Pronto para testar uma conversa; desempenho ainda não medido.')
+            lines.append('Modelo: instalado. Pronto para conversar. Este diagnóstico não mede qualidade ou desempenho.')
         else:
             lines.append(f'Modelo: não encontrado. Execute no PowerShell: ollama pull {settings.model}')
     except (ValueError, KeyError, TypeError):

@@ -6,7 +6,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from kiki.domain.reminders import parse_reminder
-from kiki.infrastructure.ollama import ask_ollama
+from kiki.infrastructure.ollama import ask_ollama, OllamaError
 from kiki.application.context import retrieve_context
 from kiki.application.diagnostics import diagnose
 from kiki.infrastructure.settings import Settings, data_directory
@@ -260,11 +260,15 @@ class App:
         self.status.set('Consultando o Ollama local…')
         settings = self.settings
         def worker():
+            succeeded = False
             try:
                 answer = ask_ollama(question, records, settings)
+                succeeded = True
+            except OllamaError as error:
+                answer = str(error) + '\n\nSua memória e seus lembretes continuam disponíveis.'
             except Exception:
                 answer = 'Não consegui consultar o Ollama local. Abra Configuração no menu à esquerda e clique em Verificar ambiente.\n\nSua memória e seus lembretes continuam disponíveis.'
-            self.messages.put((question, answer))
+            self.messages.put((question, answer, succeeded))
         threading.Thread(target=worker, daemon=True).start()
 
     def poll(self):
@@ -274,10 +278,12 @@ class App:
         except queue.Empty:
             pass
         try:
-            question, answer = self.messages.get_nowait()
-            self.display(self.answer, f'Você: {question}\n\nKiKi: {answer}')
+            question, answer, succeeded = self.messages.get_nowait()
+            author = 'KiKi' if succeeded else 'Falha na consulta'
+            self.display(self.answer, f'Você: {question}\n\n{author}: {answer}')
             self.send.configure(state='normal')
-            self.status.set('Pronta. A conversa não foi salva como registro.')
+            self.status.set('Pronta. A conversa não foi salva como registro.' if succeeded else
+                            'Falha na consulta. Confira a mensagem e tente novamente. Memória e lembretes disponíveis.')
         except queue.Empty:
             pass
         self.root.after(200, self.poll)

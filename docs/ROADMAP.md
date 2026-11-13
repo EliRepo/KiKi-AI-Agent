@@ -2,14 +2,16 @@
 
 Validação de retomada em 13/11/2026: 17 testes locais aprovados com Python 3.13.15, interface aberta neste computador e compositor corrigido para permanecer visível. Ollama sem resposta local; inferência real permanece pendente. Detalhes e sequência: [registro local](VALIDACAO-LOCAL-2026-11-13.md). Correções desta retomada ainda não publicadas.
 
-Atualizado em 12/11/2026. Estados: **parcial**, **implementado no protótipo**, **planejado**. Implementado não significa validado no computador de destino.
+Atualizado em 13/11/2026. Estados: **parcial**, **implementado no protótipo**, **planejado**. Implementado não significa validado no computador de destino.
+
+M02 em avaliação local: Ollama 0.40.16 e qwen3:1.7b instalados; consultas reais no i5-1334U/16 GB, erro real de modelo ausente e falhas simuladas diferenciadas na interface. Ver [evidências e limites](VALIDACAO-OLLAMA-2026-11-13.md). Aceitação de qualidade, citações e teste sem internet seguem pendentes.
 
 ## Submódulos
 
 | ID | Submódulo | Estado e evidência | Falta para concluir |
 | --- | --- | --- | --- |
-| M01 | Configuração e diagnóstico | Implementado: aba Configuração, modelo persistido e diagnóstico com cinco testes adicionais | Ensaio manual com Ollama no computador de destino |
-| M02 | Motor de IA local | Parcial: adaptador HTTP e teste simulado | Teste real, timeout, modelo ausente e medição no equipamento |
+| M01 | Configuração e diagnóstico | Implementado: configuração persistente, diagnóstico real do serviço/modelo em 13/11 e detecção portátil | Avaliação do responsável durante o uso |
+| M02 | Motor de IA local | Parcial: inferência real, tempos e memória registrados; falhas diferenciadas, incluindo 404 real | Qualidade/citações, uso diário, teste sem internet e timeout real |
 | M03 | Memória persistente | Parcial: guardar, buscar e reabrir testados | Editar, excluir, migrações e testes de atualização |
 | M04 | Busca de contexto | Parcial: busca sem acentos e contexto limitado | Conjunto de perguntas de aceitação, fontes visíveis e avaliação de relevância |
 | M05 | Entendimento de pedidos | Parcial: datas explícitas com validação | Intenções, campos obrigatórios e perguntas sobre dados ausentes |
@@ -30,7 +32,7 @@ Atualizado em 12/11/2026. Estados: **parcial**, **implementado no protótipo**, 
 - [x] Testar persistência, datas, backup e contrato da API com simulação.
 - [x] Definir CI para Windows/Linux e Python 3.11–3.13.
 - [x] CI executada e aprovada em Windows/Linux e Python 3.11–3.13: [execução validada](https://github.com/EliRepo/KiKi-AI-Agent/actions/runs/43322972528).
-- [ ] Instalar/abrir Ollama no computador de destino e baixar o modelo.
+- [x] Instalar/abrir Ollama no computador de destino e baixar o modelo: Ollama 0.40.16 e qwen3:1.7b em 13/11/2026; evidências no ensaio M02.
 - [ ] Medir tempo de resposta, memória e impacto nos programas habituais.
 - [ ] Validar sem internet após o download.
 
@@ -38,7 +40,7 @@ Saída: decidir se Qwen3 1.7B atende à qualidade e ao desempenho necessários. 
 
 ### Fase 2 — Memória e operação confiáveis
 
-- [x] Configuração persistente e diagnóstico (M01); teste com serviço real ainda pendente.
+- [x] Configuração persistente e diagnóstico (M01); serviço/modelo reais verificados em 13/11/2026.
 - [ ] Edição/exclusão e migrações (M03).
 - [ ] Avaliação de busca com dados fictícios (M04).
 - [ ] Restauração de backup testada (M10).

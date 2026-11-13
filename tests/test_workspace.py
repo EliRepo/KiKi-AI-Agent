@@ -8,6 +8,7 @@ from kiki.ui.desktop import App
 from kiki.ui import appearance
 from kiki.infrastructure.settings import Settings
 from kiki.ui.rounded import RoundedButton
+from kiki.infrastructure.ollama import OllamaError
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -53,6 +54,34 @@ class WorkspaceTests(unittest.TestCase):
             self.assertGreater(widget.winfo_height(), 10)
             self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(),
                                  self.root.winfo_rooty() + self.root.winfo_height())
+
+    def test_inference_failure_is_visible_and_allows_retry(self):
+        self.app.question.insert(0, 'Pergunta fictícia')
+        with patch('kiki.ui.desktop.threading.Thread') as thread, \
+             patch('kiki.ui.desktop.ask_ollama', side_effect=OllamaError('Modelo ausente.')):
+            thread.return_value.start.side_effect = lambda: thread.call_args.kwargs['target']()
+            self.app.ask()
+            self.app.ask()  # A second send must remain blocked while the result is queued.
+            self.assertEqual(self.app.messages.qsize(), 1)
+            self.app.poll()
+        self.assertIn('Falha na consulta', self.app.answer.get('1.0', 'end'))
+        self.assertIn('Modelo ausente', self.app.answer.get('1.0', 'end'))
+        self.assertIn('Falha na consulta', self.app.status.get())
+        self.assertEqual(str(self.app.send.cget('state')), 'normal')
+        self.assertEqual(self.app.question.get(), 'Pergunta fictícia')
+        self.assertEqual(self.memory.search(''), [])
+
+    def test_successful_inference_restores_ready_state(self):
+        self.app.question.insert(0, 'Pergunta fictícia')
+        with patch('kiki.ui.desktop.threading.Thread') as thread, \
+             patch('kiki.ui.desktop.ask_ollama', return_value='Resposta fictícia.'):
+            thread.return_value.start.side_effect = lambda: thread.call_args.kwargs['target']()
+            self.app.ask()
+            self.app.poll()
+        self.assertIn('KiKi: Resposta fictícia.', self.app.answer.get('1.0', 'end'))
+        self.assertTrue(self.app.status.get().startswith('Pronta.'))
+        self.assertEqual(str(self.app.send.cget('state')), 'normal')
+        self.assertEqual(self.memory.search(''), [])
 
     def test_memory_and_reminder_actions_still_work(self):
         self.app.workspace.select('notes')

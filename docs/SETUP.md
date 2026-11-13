@@ -10,7 +10,7 @@ cd KiKi-AI-Agent
 py -3 -m kiki
 ```
 
-Se recebeu um ZIP, extraia e abra `scripts/start.cmd`. A branch `feat/kiki-modular-foundation` contém a entrega para revisão enquanto o pull request não for integrado à main.
+Se recebeu um ZIP, extraia e abra `scripts/start.cmd`. O iniciador prefere `.venv\Scripts\python.exe`, quando esse ambiente já existir; caso contrário usa `py -3`. Criar o ambiente é opcional: `py -3 -m venv .venv`. A base publicada está na main; a próxima entrega M02 está em avaliação local.
 
 ## Ollama local
 
@@ -28,6 +28,30 @@ ollama list
 ```
 
 O download requer internet. O endpoint usado é `http://127.0.0.1:11434/api/chat`; a KiKi ignora proxies nessa chamada. Não configure `OLLAMA_HOST` para expor o serviço à rede. Documentação da API: https://docs.ollama.com/api/chat e configuração: https://docs.ollama.com/faq . Não há provedor online alternativo na KiKi.
+
+### Instalação portátil usada neste computador
+
+O pacote oficial Ollama 0.40.16 foi extraído em `%LOCALAPPDATA%\Programs\Ollama`, com SHA-256 verificado. Essa instalação não adicionou atalho, entrada no PATH nem inicialização automática. Para iniciar o serviço manualmente, abra `scripts/start-ollama.cmd`: ele usa essa pasta, desativa nuvem e fixa o servidor em `127.0.0.1:11434`. Mantenha o serviço aberto enquanto conversa. Se outro Ollama já estiver atendendo nessa porta, não inicie uma segunda instância. A KiKi continua sendo aberta por `scripts/start.cmd`.
+
+Se o comando não estiver no PATH, use no PowerShell:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Ollama\ollama.exe" list
+```
+
+O diagnóstico reconhece tanto o comando no PATH quanto o executável nessa pasta. Modelos ficam em `%USERPROFILE%\.ollama\models`, fora do repositório. O modelo qwen3:1.7b já foi baixado neste computador. Referência oficial para o pacote portátil: https://docs.ollama.com/windows .
+
+### Ensaio real, opcional
+
+Na raiz do checkout, com Ollama aberto e modelo instalado:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.benchmark_ollama --output resultado-local.json
+```
+
+Esse comando envia três perguntas com registros fictícios em SQLite na memória, sem abrir o banco pessoal. Não instala nem baixa modelos. O arquivo contém perguntas, respostas e duração; receber uma resposta não significa que seu conteúdo passou na avaliação. Confira fatos e citações manualmente. Os testes unitários continuam sem rede ou downloads.
+
+A conversa agora diferencia indisponibilidade, timeout de 180 segundos, modelo ausente e resposta inválida. Uma falha fica identificada como falha, preserva a pergunta e libera o botão para tentar novamente. Não há repetição automática de consultas.
 
 ## Dados e recuperação
 
@@ -62,4 +86,4 @@ Para restaurar, feche a KiKi. Preserve uma cópia do banco atual, copie o backup
 5. Desconecte a internet e repita. Feche Ollama e confirme que memória/agenda continuam disponíveis.
 6. Faça backup; teste recuperação com dados fictícios e confira registros e pendências.
 
-Não há benchmark real registrado ainda. Informe tempos, memória observada e erros no ensaio para atualizar o roadmap.
+O [ensaio de 13/11/2026](VALIDACAO-OLLAMA-2026-11-13.md) registra inferência real, tempos, memória observada e falhas de qualidade. O teste com a conexão de internet desligada e a avaliação durante uma jornada de trabalho continuam pendentes.

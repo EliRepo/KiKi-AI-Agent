@@ -35,6 +35,16 @@ class SettingsTests(unittest.TestCase):
 
 
 class DiagnosticsTests(unittest.TestCase):
+    def test_portable_installation_is_detected_without_path_entry(self):
+        with patch('kiki.application.diagnostics.shutil.which', return_value=None), \
+             patch.dict('os.environ', {'LOCALAPPDATA': 'example-local-data'}), \
+             patch('kiki.application.diagnostics.Path.is_file', return_value=True), \
+             patch('kiki.application.diagnostics.urllib.request.build_opener') as factory:
+            factory.return_value.open.side_effect = OSError('offline')
+            result = diagnose(Settings(), Path('example-data'))
+        self.assertIn('Comando Ollama: encontrado em', result)
+        self.assertIn('ollama.exe', result)
+
     def check(self, payload):
         with patch('kiki.application.diagnostics.urllib.request.build_opener') as factory:
             factory.return_value.open.return_value = io.BytesIO(json.dumps(payload).encode())

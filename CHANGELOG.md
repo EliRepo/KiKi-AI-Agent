@@ -1,5 +1,13 @@
 # Atualizações
 
+## M02 — Inferência real e tratamento de falhas (avaliação local)
+
+- Ollama 0.40.16 portátil e qwen3:1.7b preparados no i5-1334U/16 GB; primeiro ensaio real documentado em docs/VALIDACAO-OLLAMA-2026-11-13.md, com respostas e tempos preservados.
+- Registros enviados ao modelo com campos identificados e orientação de contexto ajustada após falhas reais de qualidade. Citações ainda precisam de avaliação.
+- Mensagens específicas para serviço indisponível, conexão interrompida, timeout, modelo ausente, HTTP e resposta inválida/vazia. Interface distingue falha e permite nova tentativa.
+- Diagnóstico reconhece executável portátil; adicionados iniciador local do Ollama e benchmark opcional com dados fictícios em memória.
+- 22 testes locais aprovados. Consulta pela janela real demonstrada. Internet desligada e aceite de desempenho/qualidade continuam pendentes; sem publicação remota desta entrega.
+
 ## Primeira publicação no GitHub
 
 - Base modular e refinamentos integrados à main pelo PR #1, com remoção do código C anterior.
