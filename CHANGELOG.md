@@ -1,5 +1,13 @@
 # Atualizações
 
+## M05–M07 — Pedidos explícitos e ferramentas confirmadas
+
+- Gramática local para guardar, lembrar e cenário combinado, com perguntas sobre campos ausentes e horas por extenso limitadas.
+- Propostas imutáveis por ID, estados de execução e janela de conferência. Cancelar não grava; respostas livres do modelo não executam ações.
+- Registro/lembrete e comprovante numa transação; falha na segunda ação reverte a primeira. Comprovante persistente impede repetição do mesmo ID/conteúdo, inclusive após reabrir o banco.
+- Esquema 3 com atualização preservando dados e backup prévio. Demonstração com dados fictícios aberta para conferência.
+- 59 testes locais aprovados, cobrindo domínio, coordenador, persistência e interface; evidências e limites em docs/VALIDACAO-AGENTE-2026-11-13.md. Sem novo aceite de qualidade do Ollama ou publicação remota.
+
 ## M04 e recuperação M10 — Busca conferível e cópias verificadas
 
 - Busca com palavras inteiras e normalização de acentos; 12 perguntas de aceitação com dados fictícios.

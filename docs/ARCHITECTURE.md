@@ -23,7 +23,7 @@ flowchart TD
 | Camada | Responsabilidade | Limite |
 | --- | --- | --- |
 | domain | Normalização e datas | Sem banco, interface ou rede |
-| application | Preparar contexto de consulta | Ainda não contém coordenador de agente |
+| application | Preparar contexto e coordenar propostas confirmadas | Só duas ferramentas tipadas: guardar registro e criar lembrete |
 | infrastructure | Persistência e comunicação com Ollama | Não interpreta comandos livres como ações |
 | ui | Coleta, validação visual, eventos e apresentação | Parte da coordenação ainda reside aqui; migração será incremental |
 | composição | Criar banco e janela | Define armazenamento local |
@@ -36,34 +36,37 @@ flowchart TD
 4. Aviso: ciclo de 15 segundos consulta vencidos não avisados → janela com som → reconhecimento → pendência continua até conclusão.
 5. Backup: seletor de destino → API SQLite backup → arquivo fechado após cópia.
 6. Recuperação: abrir origem somente para leitura → conferir integridade e esquema → criar destino exclusivamente novo → backup SQLite → conferir integridade do resultado. O banco em uso não é trocado.
+7. Pedido explícito: gramática determinística → pergunta sobre campos ausentes ou proposta imutável → conferência por ID → confirmação → gravação transacional das ações e do comprovante → resultado com IDs. O Ollama não participa desse fluxo.
 
 SQLite permanece na thread principal. A chamada HTTP roda em thread de trabalho e devolve resultados por fila, evitando travar a janela. Não mover conexões SQLite entre threads. O fechamento durante uma consulta encerra a interface; a resposta não será persistida.
 
 ## Persistência atual
 
-Esquema 2 (`PRAGMA user_version`): `notes(id, text, created, updated, revision)` e `tasks(id, text, due, done, alerted)`. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
+Esquema 3 (`PRAGMA user_version`): `notes(id, text, created, updated, revision)`, `tasks(id, text, due, done, alerted)` e `action_receipts(proposal_id, signature, note_id, task_id, executed)`. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
 
-`infrastructure/migrations.py` reconhece o banco original sem versão e a base na versão 1. Antes de atualizar um arquivo existente, cria uma cópia consistente na mesma pasta. A migração ocorre em uma transação; falha reverte esquema e versão. Bancos de versões futuras ou estrutura não reconhecida são recusados. A conexão é fechada se a inicialização falhar, com mensagem visível na abertura da KiKi.
+`infrastructure/migrations.py` reconhece os bancos anteriores sem versão, v1 e v2. Antes de atualizar um arquivo existente, cria uma cópia consistente na mesma pasta. A migração ocorre em uma transação; falha reverte esquema e versão. Bancos de versões futuras ou estrutura não reconhecida são recusados. A conexão é fechada se a inicialização falhar, com mensagem visível na abertura da KiKi.
 
 A migração 2 reconstrói a tabela de registros dentro da transação, preservando IDs/textos/datas e usando AUTOINCREMENT para impedir reutilização de IDs excluídos. Acrescenta data de alteração e revisão. Editar e excluir exigem a revisão lida anteriormente; linha ausente ou revisão divergente produz erro, sem anunciar sucesso. As operações não alteram cópias antigas de segurança. A interface usa uma lista selecionável, prévia completa, editor separado e confirmação explícita antes da exclusão.
 
-## Arquitetura alvo do agente — planejada
+## Agente com ações confirmadas — primeira implementação
 
 ```mermaid
 flowchart LR
     Request[Pedido] --> Intent[Interpretação de intenção]
-    Intent --> Evidence[Consulta de memória]
-    Evidence --> Proposal[Proposta tipada]
+    Intent --> Proposal[Proposta tipada completa]
+    Intent --> Missing[Pergunta sobre campos ausentes]
     Proposal --> Confirm[Conferência da pessoa]
     Confirm --> Tools[Ferramentas permitidas]
     Tools --> Result[Resultado verificável]
 ```
 
-O coordenador ficará em `application/agent.py` quando implementado. Contratos de propostas e resultados ficarão em `domain/`; ferramentas específicas em `application/tools/`. Não criar diretórios vazios como se essas funções já existissem.
+O coordenador está em `application/agent.py`. Contratos imutáveis em `domain/actions.py`, interpretação limitada em `domain/requests.py` e entrada de ferramentas em `application/tools/__init__.py`. A interface nunca interpreta respostas do modelo como propostas.
 
-Contrato proposto: `ActionProposal(id, kind, payload, state)` com tipos permitidos `save_note`, `create_reminder`, `update_note`, `complete_reminder`. Estados: proposta, confirmada, executada, cancelada ou falhou. A execução exige confirmação vinculada ao ID e proteção contra repetição. Nenhum texto do modelo vira SQL, shell ou Python executável. Uma falha não pode produzir mensagem de sucesso.
+Contrato atual: `ActionProposal(id, request, actions, state, result, error)`, com uma ou duas ações `SaveNote` e `CreateReminder`, no máximo uma de cada. Estados: proposta, confirmada, executada, cancelada ou falhou. A confirmação é vinculada ao ID da sessão e ao conteúdo imutável mostrado em `ui/proposal.py`. Edição de registros e conclusão de lembretes por ferramentas continuam futuras; hoje usam os botões existentes.
 
-Pedidos com várias alterações, como registro mais lembrete, precisarão de transação ou apresentação explícita de resultados parciais. Campos ausentes geram pergunta; não se inventam nomes, datas ou horários.
+`Memory.apply_actions` adquire bloqueio de escrita, confere o comprovante do ID, valida o horário e grava registro, lembrete e comprovante em uma transação. Falha reverte tudo. O comprovante guarda hash do conteúdo tipado e IDs resultantes; o mesmo ID/conteúdo retorna o resultado anterior, inclusive após reabrir o banco. ID com conteúdo diferente é recusado. Reenviar o texto é um novo pedido e não é deduplicado semanticamente.
+
+Campos ausentes geram pergunta e exigem reenvio do pedido completo; não há coleta livre de campos em vários turnos. Propostas pendentes/canceladas permanecem só na sessão. Confirmação textual como “sim” não executa. O executor não recebe shell, SQL ou código do modelo. Nem uma falha nem uma proposta não confirmada anunciam gravação concluída.
 
 ## Evolução e limites
 
@@ -74,5 +77,5 @@ Pedidos com várias alterações, como registro mais lembrete, precisarão de tr
 - Configuração persistente fica em `infrastructure/settings.py`; diagnóstico local em `application/diagnostics.py`. A seção Configuração no menu lateral permite escolher o modelo e verificar `/api/tags` sem enviar registros. O endpoint permanece fixo em loopback.
 - `ui/workspace.py` organiza quatro páginas persistentes e a navegação lateral. Trocar de página não recria os campos nem acessa o banco. Conversa é a página inicial; a seção Configuração ainda usa a área central, até M09.3.
 - `ui/appearance.py` centraliza as paletas violeta dos temas Claro/Escuro e reaplica cores sem reconstruir as páginas. `ui/rounded.py` fornece superfícies, botões, campos e seletores arredondados. Inter acompanha o aplicativo com licença e é registrada privadamente no Windows por `infrastructure/fonts.py`; nenhuma fonte do sistema é substituída.
-- Coordenador, ferramentas por conversa e lembretes em segundo plano ainda não existem.
+- A gramática cobre pedidos explícitos e o cenário combinado do roadmap; não é um interpretador geral. Avisos ainda exigem aplicativo aberto, sem serviço de lembretes em segundo plano.
 - Não há isolamento entre usuários, criptografia própria nem proteção contra malware na conta Windows.

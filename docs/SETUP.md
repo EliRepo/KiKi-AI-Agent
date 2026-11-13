@@ -10,7 +10,7 @@ cd KiKi-AI-Agent
 py -3 -m kiki
 ```
 
-Se recebeu um ZIP, extraia e abra `scripts/start.cmd`. O iniciador prefere `.venv\Scripts\python.exe`, quando esse ambiente já existir; caso contrário usa `py -3`. Criar o ambiente é opcional: `py -3 -m venv .venv`. A base publicada está na main; a próxima entrega M02 está em avaliação local.
+Se recebeu um ZIP, extraia e abra `scripts/start.cmd`. O iniciador prefere `.venv\Scripts\python.exe`, quando esse ambiente já existir; caso contrário usa `py -3`. Criar o ambiente é opcional: `py -3 -m venv .venv`. A base publicada está na main; as entregas posteriores estão em avaliação local.
 
 ## Ollama local
 
@@ -63,7 +63,7 @@ Em Memória, selecione uma linha para ler o texto completo abaixo. **Editar sele
 
 ### Atualização automática do banco
 
-O esquema atual é a versão 2. Ao abrir um banco do protótipo anterior, a KiKi cria uma cópia consistente na mesma pasta, com nome `kiki.pre-migration-v0-<identificador>.sqlite3` (ou v1), antes de atualizar. A cópia contém os dados anteriores e deve receber o mesmo cuidado de privacidade do banco. Falha no backup impede a migração. Falha na migração reverte as alterações; não apague o banco para resolver um erro. Bancos de versões futuras são recusados para evitar perda de dados.
+O esquema atual é a versão 3. Ao abrir um banco anterior, a KiKi cria uma cópia consistente na mesma pasta, com nome `kiki.pre-migration-v0-<identificador>.sqlite3` (ou v1/v2), antes de atualizar. A cópia contém os dados anteriores e deve receber o mesmo cuidado de privacidade do banco. Falha no backup impede a migração. Falha na migração reverte as alterações; não apague o banco para resolver um erro. Bancos de versões futuras são recusados para evitar perda de dados.
 
 IDs, textos e datas de criação são preservados. Lembretes não mudam. As cópias automáticas não têm exclusão nem retenção automática nesta etapa.
 
@@ -98,8 +98,29 @@ Para explorar a interface sem dados pessoais, execute `.\.venv\Scripts\python.ex
 - O computador deve estar ligado e acordado; ao reabrir, lembretes vencidos ainda não avisados aparecem.
 - Avisos são janelas do aplicativo, não notificações nativas do Windows.
 - Datas usam o horário do computador. Não há conversão de fuso, recorrência ou interpretação de “semana que vem”.
-- A conversa não é persistida e não salva nem agenda ações.
+- A conversa não é persistida. Pedidos explícitos podem salvar/agendar após confirmação; respostas livres do Ollama não executam ações.
 - Busca é textual, sem sinônimos; contexto pode omitir partes longas de registros.
+
+## Pedidos com ações confirmadas
+
+Digite na conversa um destes formatos:
+
+- `Guarde: Atendi Ana e corrigi a permissão.`
+- `Lembre-me de conferir Ana amanhã às 10h`.
+- `Guarde: Ana atendida; lembre-me de conferir Ana amanhã às 10h`.
+- `Atendi Ana, corrigi a permissão e quero conferir amanhã às dez`.
+
+A gramática reconhece também Salve/Registre/Anote, Me lembre de, Crie um lembrete para e Agende. Não é compreensão geral de linguagem natural. Use hoje, amanhã ou DD/MM/AAAA e horário de 24 horas: `às 10h`, `às 10:30`, `às dez`, `às dez e meia`. Não há recorrência ou inferência de “da noite”; use `às 22h`.
+
+Sem descrição/data/horário válidos, a KiKi pergunta o que falta e não grava nada. Reenvie o pedido completo com a correção: a resposta seguinte não é combinada automaticamente com o pedido anterior. No cenário combinado, a descrição do lembrete conserva o relato como referência; confira o texto e a data na janela.
+
+Uma proposta pronta abre **Confira antes de confirmar**, com ID, textos e data completa. **Confirmar e executar** grava as ações; **Cancelar**, Escape ou fechar a janela não grava. Para ajustar a proposta, cancele e reenvie o pedido. Digitar “sim” no chat não é confirmação. Fechar a KiKi descarta propostas pendentes sem executá-las.
+
+O resultado informa os IDs efetivamente gravados. Registro e lembrete juntos são uma única transação; falha não anuncia sucesso. Se o horário passar enquanto você confere, a proposta falha e exige novo pedido. Confirmação repetida do mesmo ID não duplica as gravações, mas reenviar o texto gera outro ID e pode repetir os dados se for confirmado de novo.
+
+Esses pedidos funcionam sem Ollama: o modelo não escolhe ferramentas. Editar/excluir registros e concluir lembretes continuam pelos botões. Os comprovantes de execução ficam no banco e no backup; não há política automática de retenção.
+
+Para demonstrar com dados fictícios: `.\.venv\Scripts\python.exe -m scripts.demo_workspace --agent-demo`. Abre somente a proposta para conferência; não confirma nem executa automaticamente.
 
 ## Aceitação manual
 

@@ -17,6 +17,9 @@ from kiki.ui.note_editor import NoteEditor
 from kiki.domain.notes import NoteNotFoundError
 from kiki.ui.sources import SourceViewer
 from kiki.infrastructure.recovery import restore_backup_copy
+from kiki.application.agent import AgentCoordinator
+from kiki.domain.actions import ActionProposal, Clarification, ProposalState, CreateReminder
+from kiki.ui.proposal import ProposalDialog
 
 class App:
     def __init__(self, root, memory, settings=None, folder=None):
@@ -28,6 +31,8 @@ class App:
         self.record_query = ''
         self.note_editor = None
         self.context_sources = ()
+        self.agent = AgentCoordinator(memory)
+        self.proposal_dialog = None
         root.title('KiKi • assistente local')
         root.geometry('1180x780')
         root.minsize(960, 680)
@@ -108,6 +113,8 @@ class App:
         self.source_button = RoundedButton(chat, text='Fontes da consulta', command=self.show_sources, width=310)
         self.source_button.configure(state='disabled')
         self.source_button.pack(side='bottom', anchor='w', pady=(8, 4))
+        ttk.Label(chat, text='Pedidos: “Guarde: texto” ou “Lembre-me de conferir Ana amanhã às 10h”. Sempre há conferência.',
+                  wraplength=600, foreground=a.MUTED, font=(a.FONT, 9)).pack(side='bottom', anchor='w', pady=(4, 0))
         transcript.pack(fill='both', expand=True)
         config = self.workspace.add('config', 'Configuração', 'Escolha o modelo e verifique o ambiente. Nenhum download é iniciado automaticamente.', bottom=True)
         ttk.Label(config, text='Aparência e leitura', font=(a.FONT, 13, 'bold')).pack(anchor='w', pady=(0, 8))
@@ -355,6 +362,20 @@ class App:
         question = self.question.get().strip()
         if not question:
             return
+        prepared = self.agent.prepare(question)
+        if prepared is not None:
+            self.context_sources = ()
+            self.source_button.configure(state='disabled')
+            if isinstance(prepared, Clarification):
+                self.display(self.answer, f'Você: {question}\n\nKiKi: {prepared.message}')
+                self.status.set('Confira os dados do pedido. Nenhuma ação foi executada.')
+            elif isinstance(prepared, ActionProposal):
+                self.send.configure(state='disabled')
+                self.display(self.answer, f'Você: {question}\n\nKiKi: Preparei uma proposta. Confira a janela antes de confirmar.')
+                self.status.set('Aguardando conferência. Nada foi gravado ainda.')
+                self.proposal_dialog = ProposalDialog(self.root, self.agent, prepared, self.action_done,
+                                                      font_size=self.settings.font_size)
+            return
         records = retrieve_context(self.memory, question)
         self.send.configure(state='disabled')
         self.status.set('Consultando o Ollama local…')
@@ -370,6 +391,27 @@ class App:
                 answer = 'Não consegui consultar o Ollama local. Abra Configuração no menu à esquerda e clique em Verificar ambiente.\n\nSua memória e seus lembretes continuam disponíveis.'
             self.messages.put((question, answer, succeeded, tuple(records)))
         threading.Thread(target=worker, daemon=True).start()
+
+    def action_done(self, proposal):
+        self.send.configure(state='normal')
+        if proposal.state is ProposalState.CANCELLED:
+            text = 'Pedido cancelado. Nenhuma ação foi executada.'
+        elif proposal.state is ProposalState.FAILED:
+            text = 'Não foi possível executar o pedido. ' + (proposal.error or '') + '\nConfira a memória e os lembretes antes de refazer o pedido.'
+        elif proposal.result.replayed:
+            text = 'Esse pedido já foi executado. Nenhuma gravação foi repetida.'
+        else:
+            lines = []
+            if proposal.result.note_id is not None:
+                lines.append(f'Registro #{proposal.result.note_id} salvo na memória.')
+            if proposal.result.task_id is not None:
+                reminder = next(action for action in proposal.actions if type(action) is CreateReminder)
+                lines.append(f'Lembrete #{proposal.result.task_id} criado para {reminder.due:%d/%m/%Y %H:%M}.')
+            text = '\n'.join(lines)
+            self.show_records(self.record_query)
+            self.refresh_tasks()
+        self.display(self.answer, f'Você: {proposal.request}\n\nKiKi: {text}')
+        self.status.set(text.split('\n')[0])
 
     def show_sources(self):
         if self.context_sources:

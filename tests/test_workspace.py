@@ -9,6 +9,7 @@ from kiki.ui import appearance
 from kiki.infrastructure.settings import Settings
 from kiki.ui.rounded import RoundedButton
 from kiki.infrastructure.ollama import OllamaError
+from kiki.domain.actions import ProposalState
 
 
 class WorkspaceTests(unittest.TestCase):
@@ -84,6 +85,62 @@ class WorkspaceTests(unittest.TestCase):
         self.assertTrue(self.app.status.get().startswith('Pronta.'))
         self.assertEqual(str(self.app.send.cget('state')), 'normal')
         self.assertEqual(self.memory.search(''), [])
+
+    def test_action_preview_cancels_without_model_or_database_changes(self):
+        self.app.question.insert(0, 'Guarde: registro fictício para cancelar')
+        with patch('kiki.ui.desktop.ask_ollama') as model:
+            self.app.ask()
+            dialog = self.app.proposal_dialog
+            self.assertEqual(str(dialog.text.cget('state')), 'disabled')
+            self.assertIn('registro fictício', dialog.text.get('1.0', 'end'))
+            self.assertEqual(self.memory.search(''), [])
+            self.app.ask()  # A second send remains blocked during review.
+            self.assertIs(self.app.proposal_dialog, dialog)
+            dialog.cancel()
+        model.assert_not_called()
+        self.assertEqual(self.memory.search(''), [])
+        self.assertIn('cancelado', self.app.answer.get('1.0', 'end'))
+        self.assertEqual(str(self.app.send.cget('state')), 'normal')
+
+    def test_confirm_button_executes_combined_request_and_refreshes_views(self):
+        self.app.question.insert(0, 'Atendi Ana, corrigi a permissão e quero conferir amanhã às dez')
+        with patch('kiki.ui.desktop.ask_ollama') as model:
+            self.app.ask()
+            dialog = self.app.proposal_dialog
+            proposal_id = dialog.proposal.id
+            self.assertIn('10:00', dialog.text.get('1.0', 'end'))
+            self.assertEqual(self.memory.tasks(), [])
+            dialog.confirm()
+            dialog.confirm()  # A queued second click on a closed dialog has no effect.
+        model.assert_not_called()
+        self.assertEqual(len(self.memory.search('Ana')), 1)
+        self.assertEqual(len(self.memory.tasks()), 1)
+        self.assertEqual(len(self.app.task_list.get_children()), 1)
+        self.assertEqual(len(self.app.record_list.get_children()), 1)
+        self.assertIs(self.app.agent.get(proposal_id).state, ProposalState.EXECUTED)
+        self.assertIn('Registro #1 salvo', self.app.answer.get('1.0', 'end'))
+        self.assertIn('Lembrete #1 criado', self.app.answer.get('1.0', 'end'))
+
+    def test_missing_action_fields_do_not_open_confirmation_or_call_model(self):
+        self.app.question.insert(0, 'Lembre-me de conferir Ana amanhã')
+        with patch('kiki.ui.desktop.ask_ollama') as model:
+            self.app.ask()
+        model.assert_not_called()
+        self.assertIsNone(self.app.proposal_dialog)
+        self.assertEqual(self.memory.tasks(), [])
+        self.assertIn('horário', self.app.answer.get('1.0', 'end'))
+
+    def test_action_failure_is_not_displayed_as_success(self):
+        self.app.question.insert(0, 'Atendi Ana, corrigi a permissão e quero conferir amanhã às dez')
+        self.app.ask()
+        self.memory.db.execute("CREATE TRIGGER reject_agent_task BEFORE INSERT ON tasks BEGIN SELECT RAISE(ABORT,'falha fictícia'); END")
+        self.app.proposal_dialog.confirm()
+        self.assertEqual(self.memory.search(''), [])
+        self.assertEqual(self.memory.tasks(), [])
+        text = self.app.answer.get('1.0', 'end')
+        self.assertIn('Não foi possível executar', text)
+        self.assertNotIn('Registro #', text)
+        self.assertEqual(str(self.app.send.cget('state')), 'normal')
 
     def test_sources_keep_the_sent_snapshot_and_flag_unknown_citations(self):
         identifier = self.memory.save('Ana: texto enviado originalmente')

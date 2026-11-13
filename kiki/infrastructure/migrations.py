@@ -3,7 +3,7 @@ from pathlib import Path
 import sqlite3
 import uuid
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 BASE_COLUMNS = {'notes': {'id', 'text', 'created'},
                 'tasks': {'id', 'text', 'due', 'done', 'alerted'}}
 
@@ -12,6 +12,8 @@ def _validate_schema(db, version):
     expected = {table: set(columns) for table, columns in BASE_COLUMNS.items()}
     if version >= 2:
         expected['notes'].update({'updated', 'revision'})
+    if version >= 3:
+        expected['action_receipts'] = {'proposal_id', 'signature', 'note_id', 'task_id', 'executed'}
     for table, columns in expected.items():
         actual = {row[1] for row in db.execute(f'PRAGMA table_info({table})')}
         if actual != columns:
@@ -34,6 +36,11 @@ def _upgrade_notes(db):
     db.execute('INSERT INTO notes_v2(id,text,created) SELECT id,text,created FROM notes')
     db.execute('DROP TABLE notes')
     db.execute('ALTER TABLE notes_v2 RENAME TO notes')
+
+
+def _upgrade_receipts(db):
+    db.execute('CREATE TABLE action_receipts(proposal_id TEXT PRIMARY KEY, signature TEXT NOT NULL, '
+               'note_id INTEGER, task_id INTEGER, executed TEXT NOT NULL)')
 
 
 def migrate(db):
@@ -69,6 +76,11 @@ def migrate(db):
             _validate_schema(db, version)
             _upgrade_notes(db)
             db.execute('PRAGMA user_version=2')
+            version = 2
+        if version == 2:
+            _validate_schema(db, version)
+            _upgrade_receipts(db)
+            db.execute('PRAGMA user_version=3')
         _validate_schema(db, SCHEMA_VERSION)
         db.commit()
     except Exception:

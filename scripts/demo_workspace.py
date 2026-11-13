@@ -1,4 +1,5 @@
 """Open the real interface with fictional in-memory records and temporary settings."""
+import argparse
 import tempfile
 from pathlib import Path
 import tkinter as tk
@@ -9,6 +10,9 @@ from kiki.ui.desktop import App
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--agent-demo', action='store_true', help='Open a fictional combined request for review, without executing it.')
+    args = parser.parse_args()
     with tempfile.TemporaryDirectory(prefix='kiki-demo-') as folder:
         memory = Memory(':memory:')
         try:
@@ -21,6 +25,10 @@ def main():
             app.record_list.selection_set('1')
             app.preview_note()
             app.status.set('Demonstração com dados fictícios. Banco em memória; configurações temporárias.')
+            if args.agent_demo:
+                app.workspace.select('chat')
+                app.question.insert(0, 'Atendi Ana, corrigi a permissão e quero conferir amanhã às dez')
+                root.after(200, app.ask)
             root.mainloop()
         finally:
             memory.db.close()

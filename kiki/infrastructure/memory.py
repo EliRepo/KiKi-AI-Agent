@@ -1,9 +1,12 @@
 import sqlite3
 import datetime as dt
 import re
+import hashlib
+import json
 from kiki.domain.text import normalize
 from kiki.domain.notes import Note, NoteConflictError, NoteNotFoundError, validate_note_text
 from kiki.infrastructure.migrations import migrate
+from kiki.domain.actions import SaveNote, CreateReminder, ActionResult, validate_actions
 
 class Memory:
     def __init__(self, path):
@@ -59,6 +62,44 @@ class Memory:
     def add_task(self, text, due):
         self.db.execute('INSERT INTO tasks(text,due) VALUES (?,?)', (text, due.isoformat(timespec='minutes')))
         self.db.commit()
+
+    def apply_actions(self, proposal_id, actions, now):
+        """Commit approved typed effects and their receipt together, once per ID."""
+        validate_actions(actions)
+        if not isinstance(proposal_id, str) or not re.fullmatch(r'[0-9a-f]{32}', proposal_id):
+            raise ValueError('Identificador de proposta inválido.')
+        payload = [{'kind': 'save_note', 'text': action.text} if type(action) is SaveNote else
+                   {'kind': 'create_reminder', 'text': action.text, 'due': action.due.isoformat()}
+                   for action in actions]
+        signature = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode('utf-8')).hexdigest()
+        try:
+            self.db.execute('BEGIN IMMEDIATE')
+            receipt = self.db.execute('SELECT signature,note_id,task_id FROM action_receipts WHERE proposal_id=?',
+                                      (proposal_id,)).fetchone()
+            if receipt:
+                if receipt[0] != signature:
+                    raise ValueError('O ID da proposta já foi usado com outro conteúdo.')
+                self.db.commit()
+                return ActionResult(receipt[1], receipt[2], replayed=True)
+            note_id, task_id = None, None
+            for action in actions:
+                if type(action) is SaveNote:
+                    cursor = self.db.execute('INSERT INTO notes(text,created) VALUES (?,?)',
+                                             (action.text, now.isoformat(timespec='seconds')))
+                    note_id = cursor.lastrowid
+                elif type(action) is CreateReminder:
+                    if action.due <= now:
+                        raise ValueError('O horário do lembrete já passou. Reenvie o pedido com uma data futura.')
+                    cursor = self.db.execute('INSERT INTO tasks(text,due) VALUES (?,?)',
+                                             (action.text, action.due.isoformat(timespec='minutes')))
+                    task_id = cursor.lastrowid
+            self.db.execute('INSERT INTO action_receipts VALUES (?,?,?,?,?)',
+                            (proposal_id, signature, note_id, task_id, now.isoformat(timespec='seconds')))
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
+        return ActionResult(note_id, task_id)
 
     def tasks(self):
         return self.db.execute('SELECT id,text,due FROM tasks WHERE done=0 ORDER BY due').fetchall()
