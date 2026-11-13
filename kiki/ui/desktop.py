@@ -28,7 +28,6 @@ class App:
         main = ttk.Frame(root)
         main.pack(fill='both', expand=True)
         self.workspace = Workspace(main)
-        self.workspace.pack(fill='both', expand=True)
         chat = self.workspace.add('chat', 'Conversa', 'Converse com a KiKi usando o modelo local configurado.')
         notes = self.workspace.add('notes', 'Memória', 'Guarde informações e encontre registros salvos neste computador.')
         tasks = self.workspace.add('tasks', 'Lembretes', 'Organize suas pendências. Os avisos precisam da KiKi aberta e do computador acordado.')
@@ -63,7 +62,6 @@ class App:
         self.task_list.pack(fill='both', expand=True, pady=12)
         RoundedButton(tasks, text='Concluir selecionado', command=self.finish).pack(anchor='w')
         transcript = ttk.Frame(chat)
-        transcript.pack(fill='both', expand=True)
         self.answer = tk.Text(transcript, width=1, wrap='word', state='disabled', font=(a.FONT, 12),
                               bg=a.BG, fg=a.TEXT, relief='flat', padx=18, pady=32, spacing1=3, spacing3=5)
         scroll = ttk.Scrollbar(transcript, command=self.answer.yview)
@@ -76,7 +74,7 @@ class App:
         self.answer.tag_configure('welcome_body', foreground=a.MUTED, font=(a.FONT, 12))
         self.answer.tag_add('welcome_body', '2.0', 'end')
         composer = RoundedPanel(chat, padding=14, radius=28)
-        composer.pack(fill='x', pady=(16, 12))
+        composer.pack(side='bottom', fill='x', pady=(16, 12))
         input_row = tk.Frame(composer.body, bg=a.SURFACE)
         input_row.pack(fill='x')
         self.question = tk.Entry(input_row, font=(a.FONT, 12), bg=a.SURFACE, fg=a.TEXT,
@@ -86,7 +84,8 @@ class App:
         self.send.pack(side='right', padx=(12, 0))
         self.question.bind('<Return>', lambda event: self.ask())
         ttk.Label(chat, text='A IA recebe até 8 registros encontrados pela busca. Confira as respostas.',
-                  wraplength=600, foreground=a.MUTED, font=(a.FONT, 9)).pack(anchor='w')
+                  wraplength=600, foreground=a.MUTED, font=(a.FONT, 9)).pack(side='bottom', anchor='w')
+        transcript.pack(fill='both', expand=True)
         config = self.workspace.add('config', 'Configuração', 'Escolha o modelo e verifique o ambiente. Nenhum download é iniciado automaticamente.', bottom=True)
         ttk.Label(config, text='Aparência e leitura', font=(a.FONT, 13, 'bold')).pack(anchor='w', pady=(0, 8))
         appearance_row = ttk.Frame(config)
@@ -121,7 +120,8 @@ class App:
         self.display(self.diagnostic_result, f'Dados: {self.folder}\n\nClique em Verificar ambiente. A verificação não envia registros para a IA.')
         self.status = tk.StringVar(value='Pronta. Registros e lembretes funcionam sem Ollama.')
         ttk.Label(main, textvariable=self.status, wraplength=1100, padding=(16, 7),
-                  foreground=a.MUTED, font=(a.FONT, 9)).pack(fill='x')
+                  foreground=a.MUTED, font=(a.FONT, 9)).pack(side='bottom', fill='x')
+        self.workspace.pack(fill='both', expand=True)
         self.workspace.select('chat')
         self.show_records('')
         self.refresh_tasks()

@@ -1,5 +1,7 @@
 # Roadmap e critérios de entrega
 
+Validação de retomada em 13/11/2026: 17 testes locais aprovados com Python 3.13.15, interface aberta neste computador e compositor corrigido para permanecer visível. Ollama sem resposta local; inferência real permanece pendente. Detalhes e sequência: [registro local](VALIDACAO-LOCAL-2026-11-13.md). Correções desta retomada ainda não publicadas.
+
 Atualizado em 12/11/2026. Estados: **parcial**, **implementado no protótipo**, **planejado**. Implementado não significa validado no computador de destino.
 
 ## Submódulos

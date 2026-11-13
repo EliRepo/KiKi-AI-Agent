@@ -44,6 +44,16 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.app.model.get(), 'qwen3:0.6b')
         self.assertEqual(self.memory.search(''), [])
 
+    def test_composer_stays_visible_at_minimum_window_size(self):
+        self.root.deiconify()
+        self.root.geometry('960x680')
+        self.root.update()
+        for widget in (self.app.question, self.app.send):
+            self.assertTrue(widget.winfo_viewable())
+            self.assertGreater(widget.winfo_height(), 10)
+            self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(),
+                                 self.root.winfo_rooty() + self.root.winfo_height())
+
     def test_memory_and_reminder_actions_still_work(self):
         self.app.workspace.select('notes')
         self.app.note.insert('1.0', 'Ana: permissão corrigida')
