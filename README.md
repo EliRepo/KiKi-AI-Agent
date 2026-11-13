@@ -2,11 +2,11 @@
 
 Assistente pessoal para Windows, com memória local, lembretes e conversa opcional via Ollama. Projetada inicialmente para Ryzen 5 5500U, 12 GB de RAM e SSD. O desempenho nesse equipamento ainda precisa ser medido.
 
-**Estado: protótipo modular v0.2.0.** Pedidos explícitos no chat podem propor um registro e/ou lembrete, executados somente após conferência e confirmação na interface. Perguntas comuns usam o Ollama; suas respostas não executam ferramentas.
+**Estado: protótipo modular v0.2.1.** Pedidos explícitos no chat podem propor um registro e/ou lembrete, executados somente após conferência e confirmação na interface. Perguntas comuns usam o Ollama; suas respostas não executam ferramentas.
 
 ## Começar
 
-No Windows 10/11 x64, baixe o [pacote portátil v0.2.0](https://github.com/EliRepo/KiKi-AI-Agent/releases/tag/v0.2.0), extraia todo o ZIP e abra `KiKi/KiKi.exe`. Python e Tcl/Tk acompanham o pacote; não é necessário instalar Python ou Git. Veja [uso em outros computadores](docs/USO-WINDOWS.md). Ollama/modelo são opcionais e instalados separadamente para respostas de IA.
+No Windows 10/11 x64, baixe o [pacote portátil v0.2.1](https://github.com/EliRepo/KiKi-AI-Agent/releases/tag/v0.2.1), extraia todo o ZIP e abra `KiKi/KiKi.exe`. Python e Tcl/Tk acompanham o pacote; não é necessário instalar Python ou Git. Veja [uso em outros computadores](docs/USO-WINDOWS.md). Ollama/modelo são opcionais e instalados separadamente para respostas de IA.
 
 Para executar a partir do código-fonte:
 
