@@ -16,6 +16,8 @@ class Settings:
     theme: str = 'dark'
     font_family: str = 'Automática'
     font_size: int = 13
+    history_enabled: bool = False
+    history_days: int = 30
 
     def __post_init__(self):
         if not isinstance(self.model, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)?', self.model) or 'cloud' in self.model.lower():
@@ -26,6 +28,8 @@ class Settings:
             raise ValueError('Escolha uma família de fonte válida.')
         if type(self.font_size) is not int or not 11 <= self.font_size <= 18:
             raise ValueError('O tamanho de leitura deve estar entre 11 e 18.')
+        if type(self.history_enabled) is not bool or type(self.history_days) is not int or self.history_days not in (0, 7, 30, 90):
+            raise ValueError('Escolha uma preferência válida de histórico e retenção.')
 
     @classmethod
     def load(cls, folder):
@@ -37,7 +41,8 @@ class Settings:
             if not isinstance(data, dict):
                 raise ValueError('Formato inválido')
             return cls(model=data['model'], theme=data.get('theme', 'dark'),
-                       font_family=data.get('font_family', 'Automática'), font_size=data.get('font_size', 13))
+                       font_family=data.get('font_family', 'Automática'), font_size=data.get('font_size', 13),
+                       history_enabled=data.get('history_enabled', False), history_days=data.get('history_days', 30))
         except (OSError, ValueError, KeyError, TypeError) as error:
             raise ValueError('Não foi possível ler settings.json. Corrija o arquivo ou renomeie-o para usar o padrão.') from error
 

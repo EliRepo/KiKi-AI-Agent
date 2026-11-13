@@ -69,6 +69,9 @@ def configure_appearance(root, theme='dark', family='Automática'):
     style.configure('Treeview.Heading', background=SURFACE, foreground=TEXT, borderwidth=0, padding=8)
     style.map('Treeview', background=[('selected', SELECTED)], foreground=[('selected', TEXT)])
     style.configure('Vertical.TScrollbar', background=BORDER, troughcolor=BG, borderwidth=0, arrowsize=12)
+    style.configure('TNotebook', background=BG, borderwidth=0)
+    style.configure('TNotebook.Tab', background=SURFACE, foreground=MUTED, padding=(12, 8))
+    style.map('TNotebook.Tab', background=[('selected', SELECTED)], foreground=[('selected', TEXT)])
 
 
 def update_widgets(root, old_palette):

@@ -4,6 +4,8 @@ Assistente pessoal para Windows, com memória local, lembretes e conversa opcion
 
 **Estado: protótipo modular v0.2.1.** Pedidos explícitos no chat podem propor um registro e/ou lembrete, executados somente após conferência e confirmação na interface. Perguntas comuns usam o Ollama; suas respostas não executam ferramentas.
 
+Na branch local M09 em avaliação: múltiplas conversas, janela própria de configuração e histórico opcional com retenção. Essa entrega usa esquema 5 e ainda não integra o ZIP v0.2.1. Veja [validação e limites](docs/VALIDACAO-HISTORICO-2026-11-13.md).
+
 ## Começar
 
 No Windows 10/11 x64, baixe o [pacote portátil v0.2.1](https://github.com/EliRepo/KiKi-AI-Agent/releases/tag/v0.2.1), extraia todo o ZIP e abra `KiKi/KiKi.exe`. Python e Tcl/Tk acompanham o pacote; não é necessário instalar Python ou Git. Veja [uso em outros computadores](docs/USO-WINDOWS.md). Ollama/modelo são opcionais e instalados separadamente para respostas de IA.

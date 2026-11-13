@@ -21,6 +21,8 @@ from kiki.application.agent import AgentCoordinator
 from kiki.domain.actions import ActionProposal, Clarification, ProposalState, CreateReminder
 from kiki.ui.proposal import ProposalDialog
 from kiki.ui.task_editor import TaskEditor
+from kiki.application.chat import ChatManager
+from kiki.ui.chat_input import ChatInput
 
 class App:
     def __init__(self, root, memory, settings=None, folder=None):
@@ -35,6 +37,8 @@ class App:
         self.agent = AgentCoordinator(memory)
         self.proposal_dialog = None
         self.task_editor = None
+        self.chat = ChatManager(memory, self.settings.history_enabled, self.settings.history_days)
+        self.pending_chat = None
         root.title('KiKi • assistente local')
         root.geometry('1180x780')
         root.minsize(960, 680)
@@ -42,6 +46,17 @@ class App:
         main = ttk.Frame(root)
         main.pack(fill='both', expand=True)
         self.workspace = Workspace(main)
+        history = self.workspace.history_area
+        RoundedButton(history, text='Nova conversa', command=self.new_chat, width=190).pack(fill='x')
+        self.history_status = tk.StringVar()
+        ttk.Label(history, textvariable=self.history_status, wraplength=195, foreground=a.MUTED).pack(anchor='w', pady=5)
+        self.chat_list = ttk.Treeview(history, show='tree', selectmode='browse', height=4)
+        self.chat_list.column('#0', width=180)
+        self.chat_list.pack(fill='both', expand=True)
+        self.chat_list.bind('<Double-1>', self.open_chat)
+        self.chat_list.bind('<Return>', self.open_chat)
+        RoundedButton(history, text='Abrir selecionada', command=self.open_chat, width=190).pack(fill='x', pady=(4, 0))
+        RoundedButton(history, text='Excluir conversa…', command=self.delete_chat, width=190).pack(fill='x', pady=(4, 0))
         chat = self.workspace.add('chat', 'Conversa', 'Converse com a KiKi usando o modelo local configurado.')
         notes = self.workspace.add('notes', 'Memória', 'Guarde informações e encontre registros salvos neste computador.')
         tasks = self.workspace.add('tasks', 'Lembretes', 'Organize suas pendências. Os avisos precisam da KiKi aberta e do computador acordado.')
@@ -110,21 +125,46 @@ class App:
         composer.pack(side='bottom', fill='x', pady=(16, 12))
         input_row = tk.Frame(composer.body, bg=a.SURFACE)
         input_row.pack(fill='x')
-        self.question = tk.Entry(input_row, font=(a.FONT, 12), bg=a.SURFACE, fg=a.TEXT,
+        self.question = ChatInput(input_row, height=2, width=1, wrap='word', font=(a.FONT, 12), bg=a.SURFACE, fg=a.TEXT,
                                   insertbackground=a.TEXT, relief='flat', highlightthickness=0)
         self.question.pack(side='left', fill='x', expand=True, ipady=10)
         self.send = RoundedButton(input_row, text='↑', command=self.ask, style='Accent.TButton', width=40, circle=True)
         self.send.pack(side='right', padx=(12, 0))
-        self.question.bind('<Return>', lambda event: self.ask())
-        ttk.Label(chat, text='A IA recebe até 8 registros encontrados pela busca. Confira as respostas.',
+        self.question.bind('<Return>', self.send_enter)
+        self.question.bind('<Shift-Return>', self.question.newline)
+        ttk.Label(chat, text='Enter envia • Shift+Enter: nova linha. A IA recebe até 8 registros e até 6 mensagens anteriores.',
                   wraplength=600, foreground=a.MUTED, font=(a.FONT, 9)).pack(side='bottom', anchor='w')
-        self.source_button = RoundedButton(chat, text='Fontes da consulta', command=self.show_sources, width=310)
+        source_actions = ttk.Frame(chat)
+        source_actions.pack(side='bottom', fill='x', pady=(8, 4))
+        self.source_button = RoundedButton(source_actions, text='Fontes da consulta', command=self.show_sources, width=310)
         self.source_button.configure(state='disabled')
-        self.source_button.pack(side='bottom', anchor='w', pady=(8, 4))
+        self.source_button.pack(side='left')
+        RoundedButton(source_actions, text='Copiar resposta', command=self.copy_response, width=165).pack(side='left', padx=(8, 0))
         ttk.Label(chat, text='Pedidos: “Guarde: texto” ou “Lembre-me de conferir Ana amanhã às 10h”. Sempre há conferência.',
                   wraplength=600, foreground=a.MUTED, font=(a.FONT, 9)).pack(side='bottom', anchor='w', pady=(4, 0))
         transcript.pack(fill='both', expand=True)
-        config = self.workspace.add('config', 'Configuração', 'Escolha o modelo e verifique o ambiente. Nenhum download é iniciado automaticamente.', bottom=True)
+        placeholder = self.workspace.add('config', 'Configuração', '', bottom=True)
+        del self.workspace.pages['config']
+        placeholder.destroy()
+        self.settings_window = tk.Toplevel(root)
+        self.settings_window.withdraw()
+        self.settings_window.title('KiKi • Configuração')
+        self.settings_window.configure(bg=a.BG)
+        self.settings_window.geometry('760x660')
+        self.settings_window.minsize(700, 600)
+        self.settings_window.protocol('WM_DELETE_WINDOW', self.settings_window.withdraw)
+        self.workspace.commands['config'] = self.open_settings
+        self.settings_save = RoundedButton(self.settings_window, text='Salvar e aplicar', command=self.save_settings, style='Accent.TButton')
+        self.settings_save.pack(side='bottom', anchor='w', padx=30, pady=(0, 14))
+        tabs = ttk.Notebook(self.settings_window)
+        tabs.pack(fill='both', expand=True, padx=14, pady=14)
+        appearance = ttk.Frame(tabs, padding=16)
+        model = ttk.Frame(tabs, padding=16)
+        data = ttk.Frame(tabs, padding=16)
+        about = ttk.Frame(tabs, padding=16)
+        for page, title in ((appearance, 'Aparência'), (model, 'Modelo'), (data, 'Dados'), (about, 'Sobre')):
+            tabs.add(page, text=title)
+        config = appearance
         ttk.Label(config, text='Aparência e leitura', font=(a.FONT, 13, 'bold')).pack(anchor='w', pady=(0, 8))
         appearance_row = ttk.Frame(config)
         appearance_row.pack(fill='x', pady=(0, 10))
@@ -145,15 +185,24 @@ class App:
         chooser(size_box, self.font_size_choice, [str(i) for i in range(11, 19)], width=3).pack(fill='x')
         self.font_status = tk.StringVar(value=f'Fonte em uso: {a.FONT}. A opção automática usa uma fonte instalada no computador.')
         ttk.Label(config, textvariable=self.font_status, foreground=a.MUTED, wraplength=600).pack(anchor='w', pady=(0, 14))
+        config = model
         ttk.Label(config, text='Modelo local do Ollama:').pack(anchor='w')
         model_panel, self.model = entry(config)
         self.model.insert(0, self.settings.model)
         model_panel.pack(fill='x', pady=8)
-        RoundedButton(config, text='Salvar e aplicar', command=self.save_settings, style='Accent.TButton').pack(anchor='w')
         self.check = RoundedButton(config, text='Verificar ambiente', command=self.run_diagnostics)
         self.check.pack(anchor='w', pady=8)
-        RoundedButton(config, text='Salvar cópia de segurança…', command=self.backup).pack(anchor='w', pady=(0, 8))
-        RoundedButton(config, text='Restaurar cópia em novo arquivo…', command=self.restore_copy, width=335).pack(anchor='w', pady=(0, 8))
+        self.history_choice = tk.BooleanVar(value=self.settings.history_enabled)
+        self.retention_choice = tk.StringVar(value=str(self.settings.history_days))
+        ttk.Checkbutton(data, text='Salvar conversas localmente (inclui respostas e fontes)', variable=self.history_choice).pack(anchor='w')
+        ttk.Label(data, text='Retenção em dias: 7, 30, 90; 0 = até excluir manualmente.').pack(anchor='w', pady=(16, 4))
+        chooser(data, self.retention_choice, ['7', '30', '90', '0'], width=8).pack(anchor='w')
+        ttk.Label(data, text='Desativado por padrão. Ativar não salva conversas anteriores.\nDesativar mantém o histórico existente e inicia outra conversa ao enviar.\nA retenção é aplicada ao abrir o aplicativo ou salvar esta configuração.\nExcluir histórico não apaga notas, lembretes ou cópias de segurança.',
+                  wraplength=620).pack(anchor='w', pady=16)
+        RoundedButton(data, text='Apagar todo o histórico…', command=self.clear_history, width=280).pack(anchor='w', pady=8)
+        RoundedButton(data, text='Salvar cópia de segurança…', command=self.backup).pack(anchor='w', pady=(0, 8))
+        RoundedButton(data, text='Restaurar cópia em novo arquivo…', command=self.restore_copy, width=335).pack(anchor='w', pady=(0, 8))
+        ttk.Label(about, text='KiKi • assistente local\n\nProtótipo em avaliação. Conversas, notas e lembretes têm controles separados.\nRespostas do modelo não executam ferramentas. Pedidos explícitos exigem confirmação.\n\nAvisos exigem o aplicativo aberto e computador acordado.\nOllama e modelo são instalados separadamente. Nenhum download é iniciado aqui.', wraplength=620).pack(anchor='w')
         self.diagnostic_result = tk.Text(config, width=1, wrap='word', state='disabled', font=(a.FONT, 11))
         self.diagnostic_result.pack(fill='both', expand=True)
         self.display(self.diagnostic_result, f'Dados: {self.folder}\n\nClique em Verificar ambiente. A verificação não envia registros para a IA.')
@@ -164,6 +213,7 @@ class App:
         self.workspace.select('chat')
         self.show_records('')
         self.refresh_tasks()
+        self.refresh_chats()
         self.apply_reading_size()
         root.after(1000, self.tick)
         root.after(200, self.poll)
@@ -195,9 +245,12 @@ class App:
         try:
             settings = Settings(self.model.get().strip(),
                                 theme='light' if self.theme_choice.get() == 'Claro' else 'dark',
-                                font_family=self.font_choice.get(), font_size=int(self.font_size_choice.get()))
+                                font_family=self.font_choice.get(), font_size=int(self.font_size_choice.get()),
+                                history_enabled=self.history_choice.get(), history_days=int(self.retention_choice.get()))
+            self.chat._idle()
             settings.save(self.folder)
-        except (ValueError, OSError) as error:
+            self.chat.configure(settings.history_enabled, settings.history_days)
+        except (ValueError, OSError, sqlite3.Error) as error:
             messagebox.showerror('Configuração não salva', str(error))
             return
         old_palette = a.PALETTES[self.settings.theme]
@@ -206,6 +259,8 @@ class App:
         a.update_widgets(self.root, old_palette)
         self.workspace.select(self.workspace.current)
         self.apply_reading_size()
+        self.refresh_chats()
+        self.render_chat()
         self.font_status.set(f'Fonte em uso: {a.FONT}. Preferência: {settings.font_family}.')
         self.status.set('Configuração salva. Aparência aplicada e preservada para a próxima abertura.')
 
@@ -411,6 +466,115 @@ class App:
             self.memory.acknowledge([i for i, _, _ in rows])
         self.root.after(15000, self.tick)
 
+    def open_settings(self):
+        if self.settings_window.state() == 'withdrawn':
+            x = max(0, self.root.winfo_rootx() + 60)
+            y = max(0, self.root.winfo_rooty() + 35)
+            self.settings_window.geometry(f'+{x}+{y}')
+        self.settings_window.deiconify()
+        self.settings_window.lift()
+
+    def copy_response(self):
+        message = next((message for message in reversed(self.chat.current.messages)
+                        if message.role == 'assistant' and message.status != 'pending'), None)
+        if message is None:
+            self.status.set('Nenhuma resposta para copiar nesta conversa.')
+            return
+        self.root.clipboard_clear()
+        self.root.clipboard_append(message.text)
+        self.status.set('Última resposta copiada.')
+
+    def send_enter(self, event=None):
+        self.ask()
+        return 'break'
+
+    def refresh_chats(self):
+        self.chat_list.delete(*self.chat_list.get_children())
+        for key, title, stored in self.chat.summaries():
+            self.chat_list.insert('', 'end', iid=key, text=('● ' if stored else '○ ') + title)
+        self.chat_list.selection_set(self.chat.current_key)
+        self.chat_list.see(self.chat.current_key)
+        self.history_status.set('Histórico salvo neste PC' if self.chat.history_enabled else 'Histórico desativado • só nesta sessão')
+
+    def render_chat(self):
+        lines = []
+        self.context_sources = ()
+        for message in self.chat.current.messages:
+            author = 'Você' if message.role == 'user' else 'Falha na consulta' if message.status == 'error' else 'KiKi'
+            lines.append(f'{author}: {message.text}')
+            if message.role == 'assistant':
+                self.context_sources = message.sources
+        self.display(self.answer, '\n\n'.join(lines) if lines else 'Como posso ajudar?\n\nEnter envia. Shift+Enter insere uma nova linha.\nUse Nova conversa para começar sem o contexto anterior.')
+        self.answer.see('end')
+        self.source_button.text = f'Ver {len(self.context_sources)} registro(s) enviado(s) à IA' if self.context_sources else 'Consulta sem registros de memória'
+        self.source_button.configure(state='normal' if self.context_sources else 'disabled')
+
+    def new_chat(self):
+        try:
+            self.chat.current.draft = self.question.get()
+            self.chat.new_chat()
+        except ValueError as error:
+            self.status.set(str(error))
+            return
+        self.question.delete(0, 'end')
+        self.refresh_chats()
+        self.render_chat()
+        self.workspace.select('chat')
+        self.question.focus_set()
+
+    def open_chat(self, event=None):
+        selected = self.chat_list.selection()
+        if not selected:
+            return
+        try:
+            self.chat.current.draft = self.question.get()
+            self.chat.open_chat(selected[0])
+        except (ValueError, sqlite3.Error) as error:
+            self.status.set(str(error))
+            return
+        self.question.delete(0, 'end')
+        self.question.insert(0, self.chat.current.draft)
+        self.refresh_chats()
+        self.render_chat()
+        self.workspace.select('chat')
+
+    def delete_chat(self):
+        selected = self.chat_list.selection()
+        if not selected:
+            return
+        try:
+            self.chat._idle()
+            if not messagebox.askyesno('Excluir conversa?', 'Excluir esta conversa? Não há desfazer. Notas, lembretes e backups serão preservados.', parent=self.root):
+                return
+            self.chat.delete_chat(selected[0])
+        except (ValueError, sqlite3.Error) as error:
+            self.status.set(str(error))
+            return
+        self.question.delete(0, 'end')
+        self.refresh_chats()
+        self.render_chat()
+
+    def clear_history(self):
+        try:
+            self.chat._idle()
+            if not messagebox.askyesno('Apagar histórico?', 'Apagar todas as conversas, inclusive desta sessão? Não há desfazer. Notas, lembretes e backups serão preservados.', parent=self.settings_window):
+                return
+            self.chat.clear_history()
+        except (ValueError, sqlite3.Error) as error:
+            self.status.set(str(error))
+            return
+        self.question.delete(0, 'end')
+        self.refresh_chats()
+        self.render_chat()
+
+    def complete_chat(self, binding, text, status='ok', sources=()):
+        try:
+            self.chat.complete(*binding, text, status, sources)
+        except sqlite3.Error as error:
+            messagebox.showerror('Resposta não salva no histórico', 'A resposta está visível nesta sessão, mas não foi salva. ' + str(error), parent=self.root)
+        self.render_chat()
+        self.refresh_chats()
+
     def ask(self):
         if str(self.send.cget('state')) == 'disabled':
             return
@@ -418,33 +582,50 @@ class App:
         if not question:
             return
         prepared = self.agent.prepare(question)
+        try:
+            records = retrieve_context(self.memory, question) if prepared is None else ()
+        except sqlite3.Error as error:
+            messagebox.showerror('Consulta não iniciada', str(error), parent=self.root)
+            return
+        # These turns precede this question. New chats never inherit another chat's context.
+        history = self.chat.context()
+        if (not self.chat.history_enabled and self.chat.current.stored_id is not None) or (
+            self.chat.history_enabled and self.chat.current.stored_id is None and self.chat.current.messages
+        ):
+            history = []
+        try:
+            binding = self.chat.begin(question, 'action' if prepared is not None else 'ok')
+        except (ValueError, sqlite3.Error) as error:
+            messagebox.showerror('Consulta não iniciada', str(error), parent=self.root)
+            return
+        self.pending_chat = binding
+        self.render_chat()
+        self.refresh_chats()
         if prepared is not None:
             self.context_sources = ()
             self.source_button.configure(state='disabled')
             if isinstance(prepared, Clarification):
-                self.display(self.answer, f'Você: {question}\n\nKiKi: {prepared.message}')
+                self.complete_chat(binding, prepared.message, 'action')
                 self.status.set('Confira os dados do pedido. Nenhuma ação foi executada.')
             elif isinstance(prepared, ActionProposal):
                 self.send.configure(state='disabled')
-                self.display(self.answer, f'Você: {question}\n\nKiKi: Preparei uma proposta. Confira a janela antes de confirmar.')
-                self.status.set('Aguardando conferência. Nada foi gravado ainda.')
+                self.status.set('Aguardando conferência. Nenhuma ação foi executada.')
                 self.proposal_dialog = ProposalDialog(self.root, self.agent, prepared, self.action_done,
                                                       font_size=self.settings.font_size)
             return
-        records = retrieve_context(self.memory, question)
         self.send.configure(state='disabled')
         self.status.set('Consultando o Ollama local…')
         settings = self.settings
         def worker():
             succeeded = False
             try:
-                answer = ask_ollama(question, records, settings)
+                answer = ask_ollama(question, records, settings, history=history)
                 succeeded = True
             except OllamaError as error:
                 answer = str(error) + '\n\nSua memória e seus lembretes continuam disponíveis.'
             except Exception:
                 answer = 'Não consegui consultar o Ollama local. Abra Configuração no menu à esquerda e clique em Verificar ambiente.\n\nSua memória e seus lembretes continuam disponíveis.'
-            self.messages.put((question, answer, succeeded, tuple(records)))
+            self.messages.put((binding, question, answer, succeeded, tuple(records)))
         threading.Thread(target=worker, daemon=True).start()
 
     def action_done(self, proposal):
@@ -465,7 +646,7 @@ class App:
             text = '\n'.join(lines)
             self.show_records(self.record_query)
             self.refresh_tasks()
-        self.display(self.answer, f'Você: {proposal.request}\n\nKiKi: {text}')
+        self.complete_chat(self.pending_chat, text, 'action')
         self.status.set(text.split('\n')[0])
 
     def show_sources(self):
@@ -479,15 +660,16 @@ class App:
         except queue.Empty:
             pass
         try:
-            question, answer, succeeded, sources = self.messages.get_nowait()
+            binding, question, answer, succeeded, sources = self.messages.get_nowait()
             self.context_sources = sources
             self.source_button.text = f'Ver {len(sources)} registro(s) enviado(s) à IA' if sources else 'Consulta sem registros de memória'
             self.source_button.configure(state='normal' if sources else 'disabled')
             missing = unverified_citations(answer, sources) if succeeded else []
             if missing:
                 answer += '\n\nAtenção: a resposta citou IDs não enviados nesta consulta: ' + ', '.join(f'[{i}]' for i in missing) + '. Confira as fontes.'
-            author = 'KiKi' if succeeded else 'Falha na consulta'
-            self.display(self.answer, f'Você: {question}\n\n{author}: {answer}')
+            self.complete_chat(binding, answer, 'ok' if succeeded else 'error', sources)
+            if succeeded and self.question.get().strip() == question:
+                self.question.delete(0, 'end')
             self.send.configure(state='normal')
             self.status.set('Pronta. A conversa não foi salva como registro.' if succeeded else
                             'Falha na consulta. Confira a mensagem e tente novamente. Memória e lembretes disponíveis.')

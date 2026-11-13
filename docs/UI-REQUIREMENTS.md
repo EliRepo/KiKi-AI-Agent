@@ -1,6 +1,6 @@
 # M09 — Interface de uma assistente de conversação
 
-Estado: M09.1 avaliado pelo responsável; M09.4 implementado localmente e aguardando avaliação. Demais entregas planejadas.
+Estado: M09.1 avaliado pelo responsável; M09.2–M09.5 implementados no protótipo local, aguardando avaliação. Revisão completa M09.6 pendente. Ver [evidências do histórico](VALIDACAO-HISTORICO-2026-11-13.md).
 
 ## Objetivo
 

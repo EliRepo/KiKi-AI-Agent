@@ -96,6 +96,7 @@ def entry(parent, **kwargs):
 def chooser(parent, variable, values, width):
     """A pill menu; the operating-system popup remains native."""
     panel = RoundedPanel(parent, padding=3, radius=12)
+    panel.configure(width=width * 10 + 45)
     menu = tk.OptionMenu(panel.body, variable, *values)
     menu.configure(bg=a.SURFACE, fg=a.TEXT, activebackground=a.HOVER, activeforeground=a.TEXT,
                    relief='flat', bd=0, highlightthickness=0, width=width, font=(a.FONT, 10), anchor='w')

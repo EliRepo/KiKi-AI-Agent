@@ -2,7 +2,7 @@
 
 Registro histórico da retomada em 13/11/2026: [validação inicial](VALIDACAO-LOCAL-2026-11-13.md). As cinco entregas subsequentes foram publicadas individualmente e integradas pelo [PR #2](https://github.com/EliRepo/KiKi-AI-Agent/pull/2), com CI aprovada. A distribuição Windows foi integrada pelo [PR #3](https://github.com/EliRepo/KiKi-AI-Agent/pull/3), com matriz de testes e verificação do EXE aprovadas.
 
-Atualizado em 13/11/2026. Estados: **parcial**, **implementado no protótipo**, **planejado**. Implementado não significa validado no computador de destino.
+Atualizado em 13/11/2026. M08 publicado pelo [PR #4](https://github.com/EliRepo/KiKi-AI-Agent/pull/4); pacote Windows [v0.2.1](https://github.com/EliRepo/KiKi-AI-Agent/releases/tag/v0.2.1) com testes e smoke test aprovados. M09 novo permanece local em avaliação. Estados: **parcial**, **implementado no protótipo**, **planejado**. Implementado não significa validado no computador de destino.
 
 M02 em avaliação local: Ollama 0.40.16 e qwen3:1.7b instalados; consultas reais no i5-1334U/16 GB, erro real de modelo ausente e falhas simuladas diferenciadas na interface. Ver [evidências e limites](VALIDACAO-OLLAMA-2026-11-13.md). Aceitação de qualidade, citações e teste sem internet seguem pendentes.
 
@@ -20,7 +20,7 @@ M03, M04 e recuperação M10 avançados localmente; veja [implementação e demo
 | M06 | Coordenador do agente | Implementado localmente: proposta imutável por ID, estados e resultado com IDs verificados na persistência | Aceite durante uso real e evolução de ferramentas |
 | M07 | Ferramentas e confirmação | Implementado localmente: guardar/criar lembrete após confirmação, transação única e comprovante contra repetição | Edição/conclusão pelo chat futuras; política de retenção dos comprovantes |
 | M08 | Agenda e lembretes | Implementado localmente: editar, adiar, cancelar com confirmação, revisão de conflitos e reaviso na nova data | Avaliação da entrega; permanece operação em primeiro plano, sem recorrência |
-| M09 | Interface e histórico | M09.1 avaliado pelo responsável; M09.4 implementado localmente: paletas violeta e preferências de leitura | Avaliar M09.4; M09.2, M09.3, M09.5 e revisão completa M09.6 seguem pendentes |
+| M09 | Interface e histórico | M09.1 avaliado; M09.2–M09.5 implementados localmente: conversas, janela de configuração, temas e histórico opcional com retenção | Avaliar nova entrega; revisão completa M09.6 e continuidade real com Ollama pendentes |
 | M10 | Proteção e recuperação | Parcial: backup, recuperação em novo arquivo e recusa de cópias inválidas/sobrescrita testados; exclusão de registros confirmada | Troca operacional do banco com aplicativo fechado, política de retenção e ensaio manual completo |
 | M11 | Instalação e operação | Parcial: pacote portátil Windows x64 com Python/Tk, ZIP/hash e CI do EXE; instruções de atualização/transferência | Teste em equipamento adicional, assinatura/instalador opcionais e aceite de atualização real |
 | M12 | Validação final | Parcial: 59 testes locais em 13/11; inferência real registrada; CI da primeira publicação aprovada em Windows/Linux e Python 3.11–3.13 | Nova CI, ensaio offline, uso diário e aceite final no computador de destino |
@@ -60,12 +60,12 @@ Saída: pedir “Atendi Ana, corrigi a permissão e quero conferir amanhã às d
 
 ### Fase 4 — Uso diário
 
-- [x] Editar/adiar/cancelar lembretes (M08): implementação local com esquema 4 e testes; avaliação pendente, separada do pacote publicado v0.2.0.
+- [x] Editar/adiar/cancelar lembretes (M08): esquema 4, testes e publicação autorizada no PR #4 e pacote v0.2.1.
 - [x] M09.1: barra lateral e conversa central implementadas localmente; aguardam avaliação visual e aprovação para publicar.
-- [ ] M09.2: interação de conversa e estados de operação.
-- [ ] M09.3: janela de configurações por seções.
+- [x] M09.2: interação de conversa, autores, rolagem, cópia e estados; testes locais, aguardando avaliação.
+- [x] M09.3: janela de configurações por seções; controles de diagnóstico e backup preservados, aguardando avaliação.
 - [x] M09.4: temas violeta claro/escuro persistentes; aguardando avaliação visual. Antecipado porque depende apenas da configuração M01 e do layout M09.1, sem migrações de banco.
-- [ ] M09.5: histórico local com migrações e política de retenção.
+- [x] M09.5: histórico local opcional, esquema 5 e retenção/exclusão; [evidências e limites](VALIDACAO-HISTORICO-2026-11-13.md), aguardando avaliação.
 - [ ] M09.6: revisão de teclado, redimensionamento e fonte.
 - [ ] Definir comportamento ao minimizar, fechar, suspender e reiniciar.
 - [x] Distribuição portátil Windows sem instalar Python/Git (M11): build e verificação do EXE aprovados na CI do PR #3. Atualização mantém dados fora da pasta do programa; aceite em equipamento adicional pendente.

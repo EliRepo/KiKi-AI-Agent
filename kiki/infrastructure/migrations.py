@@ -3,7 +3,7 @@ from pathlib import Path
 import sqlite3
 import uuid
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 BASE_COLUMNS = {'notes': {'id', 'text', 'created'},
                 'tasks': {'id', 'text', 'due', 'done', 'alerted'}}
 
@@ -16,6 +16,9 @@ def _validate_schema(db, version):
         expected['action_receipts'] = {'proposal_id', 'signature', 'note_id', 'task_id', 'executed'}
     if version >= 4:
         expected['tasks'].update({'cancelled', 'revision'})
+    if version >= 5:
+        expected['conversations'] = {'id', 'title', 'created', 'updated'}
+        expected['chat_messages'] = {'id', 'conversation_id', 'role', 'text', 'status', 'sources', 'created'}
     for table, columns in expected.items():
         actual = {row[1] for row in db.execute(f'PRAGMA table_info({table})')}
         if actual != columns:
@@ -48,6 +51,15 @@ def _upgrade_receipts(db):
 def _upgrade_tasks(db):
     db.execute('ALTER TABLE tasks ADD COLUMN cancelled INTEGER NOT NULL DEFAULT 0')
     db.execute('ALTER TABLE tasks ADD COLUMN revision INTEGER NOT NULL DEFAULT 1')
+
+
+def _upgrade_history(db):
+    db.execute('CREATE TABLE conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, '
+               'created TEXT NOT NULL, updated TEXT NOT NULL)')
+    db.execute("CREATE TABLE chat_messages(id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER NOT NULL "
+               "REFERENCES conversations(id) ON DELETE CASCADE, role TEXT NOT NULL CHECK(role IN ('user','assistant')), "
+               "text TEXT NOT NULL, status TEXT NOT NULL, sources TEXT NOT NULL DEFAULT '[]', created TEXT NOT NULL)")
+    db.execute('CREATE INDEX chat_messages_conversation ON chat_messages(conversation_id,id)')
 
 
 def migrate(db):
@@ -93,6 +105,11 @@ def migrate(db):
             _validate_schema(db, version)
             _upgrade_tasks(db)
             db.execute('PRAGMA user_version=4')
+            version = 4
+        if version == 4:
+            _validate_schema(db, version)
+            _upgrade_history(db)
+            db.execute('PRAGMA user_version=5')
         _validate_schema(db, SCHEMA_VERSION)
         db.commit()
     except Exception:

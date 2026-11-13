@@ -31,18 +31,18 @@ flowchart TD
 ## Fluxos atuais
 
 1. Registro: texto → botão Guardar → INSERT parametrizado → atualização da listagem.
-2. Consulta: pergunta → busca textual por palavras inteiras → até 8 registros, 500 caracteres cada → Ollama → resposta. A fila preserva o contexto enviado para inspeção posterior; IDs citados que não estavam nele geram aviso. Não existe histórico persistente de conversa.
+2. Consulta: pergunta → busca textual por palavras inteiras → até 8 registros, 500 caracteres cada, e até 6 mensagens anteriores da conversa (3.000 caracteres) → Ollama → resposta. A fila vincula o resultado à conversa/mensagem e preserva fontes para inspeção; IDs ausentes geram aviso. Histórico é opcional, separado de notas, desativado por padrão. Ver [M09 local](VALIDACAO-HISTORICO-2026-11-13.md).
 3. Lembrete: frase opcional → parser determinístico → campos preenchidos → conferência → botão Criar → persistência.
 4. Aviso: ciclo de 15 segundos consulta vencidos não avisados → janela com som → reconhecimento → pendência continua até conclusão.
 5. Backup: seletor de destino → API SQLite backup → arquivo fechado após cópia.
 6. Recuperação: abrir origem somente para leitura → conferir integridade e esquema → criar destino exclusivamente novo → backup SQLite → conferir integridade do resultado. O banco em uso não é trocado.
 7. Pedido explícito: gramática determinística → pergunta sobre campos ausentes ou proposta imutável → conferência por ID → confirmação → gravação transacional das ações e do comprovante → resultado com IDs. O Ollama não participa desse fluxo.
 
-SQLite permanece na thread principal. A chamada HTTP roda em thread de trabalho e devolve resultados por fila, evitando travar a janela. Não mover conexões SQLite entre threads. O fechamento durante uma consulta encerra a interface; a resposta não será persistida.
+SQLite permanece na thread principal. A chamada HTTP roda em thread de trabalho e devolve resultados por fila, evitando travar a janela. Não mover conexões SQLite entre threads. Ao fechar durante uma consulta, o turno salvo permanece pendente e, ao reabrir, exibe aviso de interrupção; a resposta posterior não é persistida.
 
 ## Persistência atual
 
-Esquema 4 na branch M08 (`PRAGMA user_version`): `notes(id, text, created, updated, revision)`, `tasks(id, text, due, done, alerted, cancelled, revision)` e `action_receipts(proposal_id, signature, note_id, task_id, executed)`. O pacote publicado v0.2.0 usa esquema 3, sem os dois últimos campos de tasks. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
+Esquema 5 na branch local M09 (`PRAGMA user_version`): além de `notes`, `tasks` e `action_receipts`, há `conversations(id,title,created,updated)` e `chat_messages(id,conversation_id,role,text,status,sources,created)`. Mensagens pertencem à conversa por chave estrangeira com exclusão em cascata. O pacote publicado v0.2.1 usa esquema 4, com edição/cancelamento de lembretes, sem histórico. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
 
 `infrastructure/migrations.py` reconhece os bancos anteriores sem versão, v1, v2 e v3. Antes de atualizar um arquivo existente, cria uma cópia consistente na mesma pasta. A migração ocorre em uma transação; falha reverte esquema e versão. Bancos de versões futuras ou estrutura não reconhecida são recusados. A conexão é fechada se a inicialização falhar, com mensagem visível na abertura da KiKi.
 
