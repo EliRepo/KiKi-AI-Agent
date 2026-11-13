@@ -1,5 +1,18 @@
 # Atualizações
 
+## M08 — Lembretes corrigíveis (avaliação local)
+
+- Edição, adiamento e cancelamento confirmado; revisão evita alterações desatualizadas e estados concluído/cancelado são protegidos.
+- Novo horário reinicia o estado de aviso; cancelados saem das pendências/vencidos sem exclusão física. Operação continua com aplicativo aberto.
+- Esquema 4, com cópia prévia, preservação de campos e rollback de falha testado. Não incluído no ZIP v0.2.0, que usa esquema 3.
+- 69 testes locais aprovados e demonstração com dados fictícios aberta. Evidências em docs/VALIDACAO-M08-2026-11-13.md.
+
+## v0.2.0 — Distribuição portátil publicada
+
+- Cinco commits de evolução preservados e integrados pelo PR #2; distribuição integrada pelo PR #3.
+- ZIP Windows x64 com Python/Tk, fonte Inter, licenças, instruções e SHA-256 em GitHub Releases, sem dados pessoais ou modelos incluídos.
+- Matriz Windows/Linux em Python 3.11–3.13 e verificação do EXE aprovadas; prévia sem assinatura digital própria, com aceite em equipamento adicional ainda pendente.
+
 ## M05–M07 — Pedidos explícitos e ferramentas confirmadas
 
 - Gramática local para guardar, lembrar e cenário combinado, com perguntas sobre campos ausentes e horas por extenso limitadas.

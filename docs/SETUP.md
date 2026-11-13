@@ -65,7 +65,15 @@ Em Memória, selecione uma linha para ler o texto completo abaixo. **Editar sele
 
 ### Atualização automática do banco
 
-O esquema atual é a versão 3. Ao abrir um banco anterior, a KiKi cria uma cópia consistente na mesma pasta, com nome `kiki.pre-migration-v0-<identificador>.sqlite3` (ou v1/v2), antes de atualizar. A cópia contém os dados anteriores e deve receber o mesmo cuidado de privacidade do banco. Falha no backup impede a migração. Falha na migração reverte as alterações; não apague o banco para resolver um erro. Bancos de versões futuras são recusados para evitar perda de dados.
+Na branch M08 em avaliação, o esquema é a versão 4; o pacote publicado v0.2.0 usa a versão 3. Ao abrir um banco anterior, a KiKi cria uma cópia consistente na mesma pasta, com nome `kiki.pre-migration-v0-<identificador>.sqlite3` (ou v1/v2/v3), antes de atualizar. A cópia contém os dados anteriores e deve receber o mesmo cuidado de privacidade do banco. Falha no backup impede a migração. Falha na migração reverte as alterações; não apague o banco para resolver um erro. Bancos de versões futuras são recusados para evitar perda de dados. Depois de testar M08, a versão v0.2.0 não abre diretamente um banco v4: preserve a cópia anterior para retorno.
+
+### Lembretes — M08 em avaliação local
+
+Selecione um lembrete e use Editar para corrigir descrição/data ou Adiar para escolher uma data posterior, mantendo o texto. A data precisa ser futura; ao salvar, o estado de aviso é reiniciado para a nova data. Cancelar o editor não modifica os dados. Se o lembrete mudar, for concluído ou cancelado enquanto o editor estiver aberto, a gravação antiga é recusada.
+
+Cancelar lembrete mostra descrição/data para confirmação. Cancelar a confirmação não altera nada. Uma pendência cancelada sai da lista e dos avisos, mas permanece registrada no banco e em backups; não há exclusão física nem reativação pela interface nesta etapa. Concluir também retira o lembrete das pendências.
+
+Decisão operacional mantida: os avisos funcionam somente com a KiKi aberta e o computador acordado. Fechar encerra os avisos. Não há serviço em segundo plano, notificações nativas ou recorrência. Este M08 ainda não integra o ZIP v0.2.0; é uma entrega separada para avaliação.
 
 IDs, textos e datas de criação são preservados. Lembretes não mudam. As cópias automáticas não têm exclusão nem retenção automática nesta etapa.
 

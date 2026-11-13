@@ -155,13 +155,17 @@ class CoordinatorTests(unittest.TestCase):
     def test_version_two_upgrade_preserves_notes_and_tasks(self):
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as folder:
             path = Path(folder) / 'memory.sqlite3'
-            old = Memory(path)
-            old.save('Preservar dado fictício')
-            old.add_task('Preservar lembrete', NOW + dt.timedelta(days=1))
-            old.db.execute('DROP TABLE action_receipts')
-            old.db.execute('PRAGMA user_version=2')
-            old.db.commit()
-            old.db.close()
+            import sqlite3
+            old = sqlite3.connect(path)
+            try:
+                old.execute('CREATE TABLE notes(id INTEGER PRIMARY KEY AUTOINCREMENT,text TEXT NOT NULL,created TEXT NOT NULL,updated TEXT,revision INTEGER NOT NULL DEFAULT 1)')
+                old.execute('CREATE TABLE tasks(id INTEGER PRIMARY KEY,text TEXT NOT NULL,due TEXT NOT NULL,done INTEGER NOT NULL DEFAULT 0,alerted INTEGER NOT NULL DEFAULT 0)')
+                old.execute("INSERT INTO notes(text,created) VALUES ('Preservar dado fictício','2026-11-13T09:00:00')")
+                old.execute("INSERT INTO tasks(text,due) VALUES ('Preservar lembrete','2026-11-14T09:00')")
+                old.execute('PRAGMA user_version=2')
+                old.commit()
+            finally:
+                old.close()
             upgraded = Memory(path)
             try:
                 self.assertTrue(upgraded.migration_backup.is_file())

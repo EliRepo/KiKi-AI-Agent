@@ -1,6 +1,22 @@
 import datetime as dt
 import re
+from dataclasses import dataclass
 from .text import normalize
+
+
+class ReminderNotFoundError(LookupError):
+    pass
+
+
+@dataclass(frozen=True)
+class Reminder:
+    id: int
+    text: str
+    due: dt.datetime
+    done: bool
+    alerted: bool
+    cancelled: bool
+    revision: int
 
 HOURS = {'zero': 0, 'uma': 1, 'um': 1, 'duas': 2, 'dois': 2, 'tres': 3, 'quatro': 4,
          'cinco': 5, 'seis': 6, 'sete': 7, 'oito': 8, 'nove': 9, 'dez': 10,

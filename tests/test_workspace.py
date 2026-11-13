@@ -1,5 +1,6 @@
 """Desktop integration checks; skipped when no display is available."""
 import tkinter as tk
+import datetime as dt
 import unittest
 from unittest.mock import patch
 
@@ -141,6 +142,62 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('Não foi possível executar', text)
         self.assertNotIn('Registro #', text)
         self.assertEqual(str(self.app.send.cget('state')), 'normal')
+
+    def test_reminder_edit_and_postpone_refresh_list(self):
+        due = (dt.datetime.now() + dt.timedelta(days=2)).replace(second=0, microsecond=0)
+        self.memory.add_task('Conferir Ana', due)
+        self.app.refresh_tasks()
+        self.app.task_list.selection_set('1')
+        self.app.edit_task()
+        self.app.task_editor.text.delete('1.0', 'end')
+        self.app.task_editor.text.insert('1.0', 'Conferir Ana e Bruno')
+        self.app.task_editor.save()
+        self.assertEqual(self.memory.get_task(1).text, 'Conferir Ana e Bruno')
+        self.app.task_list.selection_set('1')
+        self.app.edit_task(postpone_only=True)
+        editor = self.app.task_editor
+        self.assertEqual(str(editor.text.cget('state')), 'disabled')
+        editor.due.delete(0, 'end')
+        editor.due.insert(0, (due + dt.timedelta(days=1)).strftime('%d/%m/%Y %H:%M'))
+        editor.save()
+        self.assertEqual(self.memory.get_task(1).due, due + dt.timedelta(days=1))
+
+    def test_reminder_cancel_requires_confirmation(self):
+        self.memory.add_task('Conferir fictício', dt.datetime.now() + dt.timedelta(days=1))
+        self.app.refresh_tasks()
+        self.app.task_list.selection_set('1')
+        with patch('kiki.ui.desktop.messagebox.askyesno', return_value=False):
+            self.app.cancel_task()
+        self.assertFalse(self.memory.get_task(1).cancelled)
+        with patch('kiki.ui.desktop.messagebox.askyesno', return_value=True):
+            self.app.cancel_task()
+        self.assertTrue(self.memory.get_task(1).cancelled)
+        self.assertEqual(self.app.task_list.get_children(), ())
+
+    def test_invalid_reminder_date_keeps_editor_and_original_data(self):
+        due = (dt.datetime.now() + dt.timedelta(days=2)).replace(second=0, microsecond=0)
+        self.memory.add_task('Preservar lembrete fictício', due)
+        self.app.refresh_tasks()
+        self.app.task_list.selection_set('1')
+        self.app.edit_task()
+        editor = self.app.task_editor
+        editor.due.delete(0, 'end')
+        editor.due.insert(0, '31/02/2027 10:00')
+        with patch('kiki.ui.task_editor.messagebox.showerror') as error:
+            editor.save()
+        error.assert_called_once()
+        self.assertTrue(editor.winfo_exists())
+        self.assertEqual(self.memory.get_task(1).due, due)
+
+    def test_reminder_list_stays_visible_at_minimum_window(self):
+        self.root.deiconify()
+        self.root.geometry('960x680')
+        self.app.workspace.select('tasks')
+        self.root.update()
+        self.assertTrue(self.app.task_list.winfo_viewable())
+        self.assertGreater(self.app.task_list.winfo_height(), 20)
+        self.assertLessEqual(self.app.task_list.winfo_rooty() + self.app.task_list.winfo_height(),
+                             self.root.winfo_rooty() + self.root.winfo_height())
 
     def test_sources_keep_the_sent_snapshot_and_flag_unknown_citations(self):
         identifier = self.memory.save('Ana: texto enviado originalmente')

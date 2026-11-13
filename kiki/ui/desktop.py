@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-from kiki.domain.reminders import parse_reminder
+from kiki.domain.reminders import parse_reminder, ReminderNotFoundError
 from kiki.infrastructure.ollama import ask_ollama, OllamaError
 from kiki.application.context import retrieve_context, unverified_citations
 from kiki.application.diagnostics import diagnose
@@ -20,6 +20,7 @@ from kiki.infrastructure.recovery import restore_backup_copy
 from kiki.application.agent import AgentCoordinator
 from kiki.domain.actions import ActionProposal, Clarification, ProposalState, CreateReminder
 from kiki.ui.proposal import ProposalDialog
+from kiki.ui.task_editor import TaskEditor
 
 class App:
     def __init__(self, root, memory, settings=None, folder=None):
@@ -33,6 +34,7 @@ class App:
         self.context_sources = ()
         self.agent = AgentCoordinator(memory)
         self.proposal_dialog = None
+        self.task_editor = None
         root.title('KiKi • assistente local')
         root.geometry('1180x780')
         root.minsize(960, 680)
@@ -84,8 +86,14 @@ class App:
         self.task_list.heading('due', text='Quando')
         self.task_list.heading('text', text='Lembrete')
         self.task_list.column('due', width=150, stretch=False)
-        self.task_list.pack(fill='both', expand=True, pady=12)
-        RoundedButton(tasks, text='Concluir selecionado', command=self.finish).pack(anchor='w')
+        task_actions = ttk.Frame(tasks)
+        task_actions.pack(side='bottom', fill='x', pady=(8, 0))
+        RoundedButton(task_actions, text='Concluir', command=self.finish, width=110).grid(row=0, column=0, padx=(0, 8), pady=4)
+        RoundedButton(task_actions, text='Editar…', command=self.edit_task, width=110).grid(row=0, column=1, padx=(0, 8), pady=4)
+        RoundedButton(task_actions, text='Adiar…', command=lambda: self.edit_task(postpone_only=True), width=110).grid(row=0, column=2, padx=(0, 8), pady=4)
+        RoundedButton(task_actions, text='Cancelar lembrete…', command=self.cancel_task, width=200).grid(row=1, column=0, columnspan=2, sticky='w', pady=4)
+        self.task_list.configure(height=3)
+        self.task_list.pack(fill='both', expand=True, pady=(10, 0))
         transcript = ttk.Frame(chat)
         self.answer = tk.Text(transcript, width=1, wrap='word', state='disabled', font=(a.FONT, 12),
                               bg=a.BG, fg=a.TEXT, relief='flat', padx=18, pady=32, spacing1=3, spacing3=5)
@@ -343,10 +351,57 @@ class App:
             self.task_list.insert('', 'end', iid=str(i), values=(dt.datetime.fromisoformat(due).strftime('%d/%m/%Y %H:%M'), text))
 
     def finish(self):
+        task = self.selected_task()
+        if task is None:
+            return
+        try:
+            self.memory.finish(task.id, expected_revision=task.revision)
+        except (ValueError, ReminderNotFoundError, sqlite3.Error) as error:
+            messagebox.showerror('Lembrete não concluído', str(error), parent=self.root)
+            return
+        self.refresh_tasks()
+        self.status.set(f'Lembrete #{task.id} concluído.')
+
+    def selected_task(self):
         selected = self.task_list.selection()
-        if selected:
-            self.memory.finish(int(selected[0]))
+        if not selected:
+            self.status.set('Selecione um lembrete na lista.')
+            return None
+        try:
+            return self.memory.get_task(int(selected[0]))
+        except ReminderNotFoundError as error:
+            self.status.set(str(error))
             self.refresh_tasks()
+            return None
+
+    def edit_task(self, postpone_only=False):
+        if self.task_editor is not None and self.task_editor.winfo_exists():
+            self.task_editor.lift()
+            return
+        task = self.selected_task()
+        if task is not None:
+            self.task_editor = TaskEditor(self.root, self.memory, task, self.task_saved,
+                                          postpone_only=postpone_only, font_size=self.settings.font_size)
+
+    def task_saved(self):
+        self.refresh_tasks()
+        self.status.set('Lembrete atualizado. O aviso será apresentado na nova data com a KiKi aberta.')
+
+    def cancel_task(self):
+        task = self.selected_task()
+        if task is None:
+            return
+        if not messagebox.askyesno('Cancelar lembrete?',
+                                  f'Cancelar o lembrete #{task.id}?\n\n{task.text}\n{task.due:%d/%m/%Y %H:%M}\n\n'
+                                  'Ele sairá das pendências e não gerará novos avisos.', parent=self.root):
+            return
+        try:
+            self.memory.cancel_task(task.id, expected_revision=task.revision)
+        except (ValueError, ReminderNotFoundError, sqlite3.Error) as error:
+            messagebox.showerror('Lembrete não cancelado', str(error), parent=self.root)
+            return
+        self.refresh_tasks()
+        self.status.set(f'Lembrete #{task.id} cancelado.')
 
     def tick(self):
         rows = self.memory.overdue()
