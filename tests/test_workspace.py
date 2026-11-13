@@ -49,6 +49,65 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.app.model.get(), 'qwen3:0.6b')
         self.assertEqual(self.memory.search(''), [])
 
+    def test_chat_turns_are_kept_and_new_chat_does_not_inherit_context(self):
+        with patch('kiki.ui.desktop.threading.Thread') as thread, \
+             patch('kiki.ui.desktop.ask_ollama', return_value='Resposta fictícia.') as model:
+            thread.return_value.start.side_effect = lambda: thread.call_args.kwargs['target']()
+            for question in ('Primeira?', 'Segunda?'):
+                self.app.question.insert(0, question)
+                self.app.ask()
+                self.app.poll()
+            text = self.app.answer.get('1.0', 'end')
+            self.assertIn('Primeira?', text)
+            self.assertIn('Segunda?', text)
+            self.assertEqual(len(model.call_args.kwargs['history']), 2)
+            self.app.new_chat()
+            self.app.question.insert(0, 'Outra conversa?')
+            self.app.ask()
+            self.app.poll()
+            self.assertEqual(model.call_args.kwargs['history'], [])
+        self.assertEqual(self.memory.conversation_list(), [])
+
+    def test_pending_turn_blocks_navigation_and_preserves_draft(self):
+        self.app.question.insert(0, 'Aguardando?')
+        with patch('kiki.ui.desktop.threading.Thread'):
+            self.app.ask()
+        original = self.app.chat.current_key
+        self.app.new_chat()
+        self.assertEqual(self.app.chat.current_key, original)
+        self.assertIn('Aguarde', self.app.status.get())
+        self.assertEqual(self.app.question.get(), 'Aguardando?')
+
+    def test_settings_is_separate_and_shift_enter_inserts_newline(self):
+        self.app.workspace.select('notes')
+        self.app.workspace.select('config')
+        self.root.update_idletasks()
+        self.assertEqual(self.app.workspace.current, 'notes')
+        self.assertEqual(self.app.settings_window.state(), 'normal')
+        self.assertTrue(self.app.settings_save.winfo_viewable())
+        self.assertGreater(self.app.settings_save.winfo_height(), 10)
+        self.assertLessEqual(self.app.settings_save.winfo_rooty() + self.app.settings_save.winfo_height(),
+                             self.app.settings_window.winfo_rooty() + self.app.settings_window.winfo_height())
+        self.app.question.insert(0, 'Linha 1')
+        self.app.question.mark_set('insert', 'end-1c')
+        self.assertEqual(self.app.question.newline(), 'break')
+        self.app.question.insert('insert', 'Linha 2')
+        self.assertEqual(self.app.question.get(), 'Linha 1\nLinha 2')
+
+    def test_reopening_action_history_never_replays_request(self):
+        self.app.chat.configure(True, 0)
+        self.app.question.insert(0, 'Guarde: registro fictício')
+        self.app.ask()
+        self.app.proposal_dialog.confirm()
+        key = self.app.chat.current_key
+        self.app.new_chat()
+        self.app.chat_list.selection_set(key)
+        with patch.object(self.app.agent, 'prepare') as prepare:
+            self.app.open_chat()
+        prepare.assert_not_called()
+        self.assertEqual(len(self.memory.search('')), 1)
+        self.assertIn('Registro #1 salvo', self.app.answer.get('1.0', 'end'))
+
     def test_composer_stays_visible_at_minimum_window_size(self):
         self.root.deiconify()
         self.root.geometry('960x680')
@@ -58,6 +117,15 @@ class WorkspaceTests(unittest.TestCase):
             self.assertGreater(widget.winfo_height(), 10)
             self.assertLessEqual(widget.winfo_rooty() + widget.winfo_height(),
                                  self.root.winfo_rooty() + self.root.winfo_height())
+        self.assertGreater(self.app.chat_list.winfo_height(), 30)
+
+    def test_copy_response_copies_only_the_latest_completed_reply(self):
+        binding = self.app.chat.begin('Pergunta fictícia')
+        self.app.chat.complete(*binding, 'Resposta para copiar')
+        with patch.object(self.root, 'clipboard_clear') as clear, patch.object(self.root, 'clipboard_append') as append:
+            self.app.copy_response()
+        clear.assert_called_once()
+        append.assert_called_once_with('Resposta para copiar')
 
     def test_inference_failure_is_visible_and_allows_retry(self):
         self.app.question.insert(0, 'Pergunta fictícia')

@@ -43,6 +43,7 @@ class Workspace(ttk.Frame):
     def __init__(self, parent):
         super().__init__(parent)
         self.pages, self.buttons, self.icons = {}, {}, {}
+        self.commands = {}
         self.current = None
         self.columnconfigure(2, weight=1)
         self.rowconfigure(0, weight=1)
@@ -66,6 +67,8 @@ class Workspace(ttk.Frame):
                  font=(a.FONT, 9, 'bold'), anchor='w').grid(row=2, column=0, sticky='ew', padx=18, pady=(0, 8))
         self.navigation = tk.Frame(sidebar, bg=a.SIDEBAR)
         self.navigation.grid(row=3, column=0, sticky='ew', padx=9)
+        self.history_area = ttk.Frame(sidebar, padding=(10, 8))
+        self.history_area.grid(row=4, column=0, sticky='nsew')
         self.bottom = tk.Frame(sidebar, bg=a.SIDEBAR)
         self.bottom.grid(row=5, column=0, sticky='ew', padx=9, pady=8)
         tk.Frame(sidebar, height=1, bg=a.BORDER).grid(row=6, column=0, sticky='ew', padx=18)
@@ -121,6 +124,9 @@ class Workspace(ttk.Frame):
         return page
 
     def select(self, key):
+        if key in self.commands:
+            self.commands[key]()
+            return
         page, title, description = self.pages[key]
         page.tkraise()
         self.current = key

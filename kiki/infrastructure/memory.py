@@ -12,6 +12,7 @@ from kiki.domain.reminders import Reminder, ReminderNotFoundError
 class Memory:
     def __init__(self, path):
         self.db = sqlite3.connect(path)
+        self.db.execute('PRAGMA foreign_keys=ON')
         try:
             self.migration_backup = migrate(self.db)
         except Exception:
@@ -161,5 +162,56 @@ class Memory:
             self.db.backup(destination)
         finally:
             destination.close()
+
+    def conversation_list(self):
+        return self.db.execute('SELECT id,title,created,updated FROM conversations ORDER BY updated DESC,id DESC').fetchall()
+
+    def begin_chat_exchange(self, conversation_id, title, text, kind, created):
+        with self.db:
+            if conversation_id is None:
+                cursor = self.db.execute('INSERT INTO conversations(title,created,updated) VALUES (?,?,?)', (title, created, created))
+                conversation_id = cursor.lastrowid
+            elif not self.db.execute('SELECT 1 FROM conversations WHERE id=?', (conversation_id,)).fetchone():
+                raise ValueError('A conversa foi excluída. Abra uma nova conversa.')
+            user = self.db.execute('INSERT INTO chat_messages(conversation_id,role,text,status,created) VALUES (?,?,?,?,?)',
+                                   (conversation_id, 'user', text, kind, created)).lastrowid
+            reply = self.db.execute('INSERT INTO chat_messages(conversation_id,role,text,status,created) VALUES (?,?,?,?,?)',
+                                    (conversation_id, 'assistant', 'Aguardando resultado…', 'pending', created)).lastrowid
+            self.db.execute('UPDATE conversations SET updated=? WHERE id=?', (created, conversation_id))
+        return conversation_id, user, reply
+
+    def complete_chat_message(self, conversation_id, message_id, text, status, sources, updated):
+        with self.db:
+            cursor = self.db.execute('UPDATE chat_messages SET text=?,status=?,sources=? '
+                                     "WHERE id=? AND conversation_id=? AND status='pending'",
+                                     (text, status, json.dumps(sources, ensure_ascii=False), message_id, conversation_id))
+            if cursor.rowcount != 1:
+                raise ValueError('A mensagem já foi concluída ou a conversa foi excluída.')
+            self.db.execute('UPDATE conversations SET updated=? WHERE id=?', (updated, conversation_id))
+
+    def conversation_messages(self, conversation_id):
+        rows = self.db.execute('SELECT id,role,text,status,sources,created FROM chat_messages '
+                               'WHERE conversation_id=? ORDER BY id', (conversation_id,)).fetchall()
+        result = []
+        for identifier, role, text, status, encoded, created in rows:
+            sources = json.loads(encoded)
+            if not isinstance(sources, list) or any(not isinstance(row, list) or len(row) != 3 or
+                    type(row[0]) is not int or not isinstance(row[1], str) or not isinstance(row[2], str) for row in sources):
+                raise ValueError('As fontes desta conversa estão em formato inválido.')
+            result.append((identifier, role, text, status, tuple(tuple(row) for row in sources), created))
+        return result
+
+    def delete_conversation(self, conversation_id):
+        with self.db:
+            self.db.execute('DELETE FROM conversations WHERE id=?', (conversation_id,))
+
+    def clear_conversations(self):
+        with self.db:
+            self.db.execute('DELETE FROM conversations')
+
+    def prune_conversations(self, cutoff):
+        with self.db:
+            cursor = self.db.execute('DELETE FROM conversations WHERE updated<?', (cutoff,))
+        return cursor.rowcount
 
 

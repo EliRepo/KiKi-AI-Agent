@@ -8,8 +8,21 @@ class OllamaError(RuntimeError):
     """A local inference failure with a message suitable for the interface."""
 
 
-def ask_ollama(question, records, settings=None):
+def ask_ollama(question, records, settings=None, history=None):
     settings = settings or Settings()
+    previous, remaining = [], 3000
+    for message in reversed(list(history or ())[-6:]):
+        if not isinstance(message, dict) or message.get('role') not in ('user', 'assistant'):
+            continue
+        content = message.get('content')
+        if not isinstance(content, str):
+            continue
+        content = content[:min(1000, remaining)]
+        if content:
+            previous.append({'role': message['role'], 'content': content})
+            remaining -= len(content)
+        if not remaining:
+            break
     context = json.dumps([{'id': identifier, 'texto': text, 'data': created}
                           for identifier, text, created in records], ensure_ascii=False)
     body = {'model': settings.model, 'stream': False, 'think': False,
@@ -24,7 +37,7 @@ def ask_ollama(question, records, settings=None):
                  '"Guarde: texto" ou "Lembre-me de conferir algo amanhã às 10h"; a interface pede confirmação. '
                  'Para editar, excluir ou concluir, oriente a usar os botões Memória ou Lembretes. Nunca afirme ter realizado uma ação. '
                  'Registros: ' + context},
-                {'role': 'user', 'content': question}]}
+                *reversed(previous), {'role': 'user', 'content': question}]}
     request = urllib.request.Request('http://127.0.0.1:11434/api/chat', data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
     # Ignore system proxies: the only destination is this computer.
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))

@@ -31,6 +31,7 @@ def run_smoke(output):
                 raise RuntimeError('Fontes ou licença ausentes no pacote')
             result = {'ok': True, 'tk': root.tk.call('info', 'patchlevel'),
                       'font': appearance.FONT, 'pages': list(app.workspace.pages),
+                      'settings_window': bool(app.settings_window.winfo_exists()),
                       'schema': memory.db.execute('PRAGMA user_version').fetchone()[0],
                       'confirmed_note_id': completed.result.note_id,
                       'data': 'fictional, in-memory SQLite; temporary settings; no network'}
