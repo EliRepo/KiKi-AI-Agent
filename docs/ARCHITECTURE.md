@@ -42,13 +42,15 @@ SQLite permanece na thread principal. A chamada HTTP roda em thread de trabalho 
 
 ## Persistência atual
 
-Esquema 3 (`PRAGMA user_version`): `notes(id, text, created, updated, revision)`, `tasks(id, text, due, done, alerted)` e `action_receipts(proposal_id, signature, note_id, task_id, executed)`. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
+Esquema 4 na branch M08 (`PRAGMA user_version`): `notes(id, text, created, updated, revision)`, `tasks(id, text, due, done, alerted, cancelled, revision)` e `action_receipts(proposal_id, signature, note_id, task_id, executed)`. O pacote publicado v0.2.0 usa esquema 3, sem os dois últimos campos de tasks. Datas são locais, sem fuso embutido. Não há suporte a viagem entre fusos nem recorrência. IDs e datas dos registros antigos e todos os campos dos lembretes são preservados na migração.
 
-`infrastructure/migrations.py` reconhece os bancos anteriores sem versão, v1 e v2. Antes de atualizar um arquivo existente, cria uma cópia consistente na mesma pasta. A migração ocorre em uma transação; falha reverte esquema e versão. Bancos de versões futuras ou estrutura não reconhecida são recusados. A conexão é fechada se a inicialização falhar, com mensagem visível na abertura da KiKi.
+`infrastructure/migrations.py` reconhece os bancos anteriores sem versão, v1, v2 e v3. Antes de atualizar um arquivo existente, cria uma cópia consistente na mesma pasta. A migração ocorre em uma transação; falha reverte esquema e versão. Bancos de versões futuras ou estrutura não reconhecida são recusados. A conexão é fechada se a inicialização falhar, com mensagem visível na abertura da KiKi.
 
 A migração 2 reconstrói a tabela de registros dentro da transação, preservando IDs/textos/datas e usando AUTOINCREMENT para impedir reutilização de IDs excluídos. Acrescenta data de alteração e revisão. Editar e excluir exigem a revisão lida anteriormente; linha ausente ou revisão divergente produz erro, sem anunciar sucesso. As operações não alteram cópias antigas de segurança. A interface usa uma lista selecionável, prévia completa, editor separado e confirmação explícita antes da exclusão.
 
 ## Agente com ações confirmadas — primeira implementação
+
+M08 acrescenta revisão e cancelamento lógico de lembretes. Alterações exigem a revisão lida no editor e uma pendência ainda ativa. Editar/adiar reinicia alerted para o próximo aviso; cancelar/concluir exclui a linha das consultas de pendências/vencidos sem apagar o registro. O estado automático de reconhecimento do aviso não altera a revisão de conteúdo. A migração v3→v4 é transacional e mantém todos os valores anteriores, com backup prévio.
 
 ```mermaid
 flowchart LR

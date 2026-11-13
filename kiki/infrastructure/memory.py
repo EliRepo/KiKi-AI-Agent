@@ -7,6 +7,7 @@ from kiki.domain.text import normalize
 from kiki.domain.notes import Note, NoteConflictError, NoteNotFoundError, validate_note_text
 from kiki.infrastructure.migrations import migrate
 from kiki.domain.actions import SaveNote, CreateReminder, ActionResult, validate_actions
+from kiki.domain.reminders import Reminder, ReminderNotFoundError
 
 class Memory:
     def __init__(self, path):
@@ -102,17 +103,56 @@ class Memory:
         return ActionResult(note_id, task_id)
 
     def tasks(self):
-        return self.db.execute('SELECT id,text,due FROM tasks WHERE done=0 ORDER BY due').fetchall()
+        return self.db.execute('SELECT id,text,due FROM tasks WHERE done=0 AND cancelled=0 ORDER BY due').fetchall()
 
-    def finish(self, task_id):
-        self.db.execute('UPDATE tasks SET done=1 WHERE id=?', (task_id,))
-        self.db.commit()
+    def get_task(self, task_id):
+        row = self.db.execute('SELECT id,text,due,done,alerted,cancelled,revision FROM tasks WHERE id=?', (task_id,)).fetchone()
+        if row is None:
+            raise ReminderNotFoundError('Esse lembrete não existe. Atualize a lista.')
+        return Reminder(row[0], row[1], dt.datetime.fromisoformat(row[2]), bool(row[3]), bool(row[4]), bool(row[5]), row[6])
+
+    def _check_task_change(self, task_id, cursor):
+        if cursor.rowcount != 1:
+            self.get_task(task_id)
+            raise ValueError('O lembrete mudou, foi concluído ou cancelado. Reabra-o antes de alterar.')
+
+    def update_task(self, task_id, text, due, *, expected_revision, now=None):
+        text = validate_note_text(text)
+        now = now or dt.datetime.now()
+        if not isinstance(due, dt.datetime) or due.tzinfo is not None or due <= now or due.second or due.microsecond:
+            raise ValueError('Informe uma data e hora futuras, com precisão de minutos.')
+        with self.db:
+            cursor = self.db.execute('UPDATE tasks SET text=?,due=?,alerted=0,revision=revision+1 '
+                                     'WHERE id=? AND revision=? AND done=0 AND cancelled=0',
+                                     (text, due.isoformat(timespec='minutes'), task_id, expected_revision))
+            self._check_task_change(task_id, cursor)
+        return self.get_task(task_id)
+
+    def postpone_task(self, task_id, due, *, expected_revision, now=None):
+        task = self.get_task(task_id)
+        if not isinstance(due, dt.datetime) or due.tzinfo is not None or due <= task.due:
+            raise ValueError('Para adiar, escolha um horário posterior ao horário atual do lembrete.')
+        return self.update_task(task_id, task.text, due, expected_revision=expected_revision, now=now)
+
+    def cancel_task(self, task_id, *, expected_revision):
+        with self.db:
+            cursor = self.db.execute('UPDATE tasks SET cancelled=1,revision=revision+1 '
+                                     'WHERE id=? AND revision=? AND done=0 AND cancelled=0', (task_id, expected_revision))
+            self._check_task_change(task_id, cursor)
+
+    def finish(self, task_id, *, expected_revision=None):
+        if expected_revision is None:
+            expected_revision = self.get_task(task_id).revision
+        with self.db:
+            cursor = self.db.execute('UPDATE tasks SET done=1,revision=revision+1 '
+                                     'WHERE id=? AND revision=? AND done=0 AND cancelled=0', (task_id, expected_revision))
+            self._check_task_change(task_id, cursor)
 
     def overdue(self):
-        return self.db.execute('SELECT id,text,due FROM tasks WHERE done=0 AND alerted=0 AND due<=? ORDER BY due', (dt.datetime.now().isoformat(timespec='minutes'),)).fetchall()
+        return self.db.execute('SELECT id,text,due FROM tasks WHERE done=0 AND cancelled=0 AND alerted=0 AND due<=? ORDER BY due', (dt.datetime.now().isoformat(timespec='minutes'),)).fetchall()
 
     def acknowledge(self, ids):
-        self.db.executemany('UPDATE tasks SET alerted=1 WHERE id=?', [(i,) for i in ids])
+        self.db.executemany('UPDATE tasks SET alerted=1 WHERE id=? AND done=0 AND cancelled=0', [(i,) for i in ids])
         self.db.commit()
 
     def backup(self, path):

@@ -37,7 +37,7 @@ class MigrationTests(unittest.TestCase):
                     self.assertEqual(memory.db.execute('PRAGMA user_version').fetchone()[0], SCHEMA_VERSION)
                     self.assertEqual(memory.get_note(7).text, 'Ana: permissão corrigida')
                     self.assertEqual(memory.get_note(7).created, '2026-11-12T10:00:00')
-                    self.assertEqual(memory.db.execute('SELECT * FROM tasks').fetchall(),
+                    self.assertEqual(memory.db.execute('SELECT id,text,due,done,alerted FROM tasks').fetchall(),
                                      [(3, 'Conferir Ana', '2027-01-01T10:00', 0, 1)])
                     with closing(sqlite3.connect(backup)) as old:
                         self.assertEqual(old.execute('PRAGMA user_version').fetchone()[0], version)
